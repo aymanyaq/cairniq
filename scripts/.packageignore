@@ -1,0 +1,103 @@
+# Package Ignore File
+# Files and directories to EXCLUDE from software package distribution
+# These are user-specific configurations that should not be overwritten
+
+# Environment and Configuration
+.env
+.env.*
+*.env.backup
+.env.lock
+
+# User Data
+chat_history.json
+checkpoints.sqlite
+portfolio.csv
+portfolio_*.csv
+trade_journal.csv
+user_profile.json
+data/user/
+data/testuser/
+data/daily_cache/
+
+# Logs
+logs/
+*.log
+server.log
+server_stdout.log
+server_stdout_debug.log
+
+# Cache and Temporary Files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.cache/
+.pytest_cache/
+faiss_index/
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# User-specific Documentation
+*_SUMMARY.md
+*_DIAGNOSIS.md
+*_INVESTIGATION.md
+*_EXPLAINED.md
+*_FIX.md
+*_STATUS.md
+*_CHECKLIST.md
+*_REFERENCE.md
+*_AUDIT.md
+*_COMPLETE.md
+VISUAL_COMPARISON.md
+LOGGING_FIXES_APPLIED.md
+
+# Compiled and Generated Files
+*.sqlite
+*.db
+*.sqlite3
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Backup Files
+*.backup
+*.bak
+*.old
+
+# Test and Debug Files
+tests/
+scripts/test_*.py
+scripts/debug_*.py
+scripts/verify_*.py
+scripts/analyze_*.py
+audit_*.py
+analyze_*.py
+
+# Package Files (don't include old packages)
+*.tar.gz
+*.zip
+financial-advisor-*.tar.gz

@@ -1,0 +1,56 @@
+{
+  "theme_weights": {
+    "momentum": 0.45,
+    "macro": 0.25,
+    "catalyst": 0.2,
+    "breadth": 0.1
+  },
+  "pillars": {
+    "theme": 30,
+    "relstr": 25,
+    "forward": 25,
+    "quality": 20
+  },
+  "flow_bonus": {
+    "two_plus": 10,
+    "one": 5
+  },
+  "entry_multipliers": {
+    "accumulation_base": 1.1,
+    "early_breakout": 1.0,
+    "mid_trend": 0.85,
+    "extended": 0.4
+  },
+  "tiers": {
+    "exceptional": 100,
+    "high": 80,
+    "qualified": 60,
+    "watchlist": 40
+  },
+  "risk_cap": 15,
+  "concentration": {
+    "threshold_pct": 25,
+    "penalty_per_excess_pct": 1
+  },
+  "top_k_themes": 4,
+  "fast_screen_top_n": 60,
+  "final_top_n": 15,
+  "universe_cap": 250,
+  "download_chunk": 75,
+  "early_mover_max_5d_gain_pct": 20,
+  "extended_over_sma50_pct": 35,
+  "catalyst": {
+    "auto_escalation_enabled": true,
+    "max_auto_escalations": 3,
+    "auto_scan_after_news": true,
+    "auto_scan_min_interval_hours": 6,
+    "stale_event_days": 3
+  },
+  "scheduler": {
+    "exchange_rate": true,
+    "portfolio_snapshot": true,
+    "score_recommendations": true,
+    "cache_cleanup": true,
+    "premarket_pulse": true
+  }
+}

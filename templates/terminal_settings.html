@@ -1,0 +1,1014 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    <header class="flex justify-between items-center px-8 h-16 w-full bg-[#131b2e] font-['Manrope'] font-bold uppercase tracking-widest border-b border-[#45464d]/15 shrink-0 z-10">
+      <div class="flex items-center gap-6">
+        <span class="text-xl font-extrabold text-[#dae2fd]">CAIRNIQ // SETTINGS</span>
+      </div>
+    </header>
+    <div class="flex-1 overflow-y-auto no-scrollbar">
+      <div class="max-w-6xl mx-auto px-6 py-6">
+<!-- Breadcrumbs -->
+<nav class="flex items-center gap-2 text-xs font-label uppercase tracking-[0.1em] text-on-surface-variant mb-6">
+<span>System</span>
+<span class="material-symbols-outlined text-[10px]" data-icon="chevron_right">chevron_right</span>
+<span class="text-primary">Settings</span>
+</nav>
+<!-- Page Header -->
+<header class="mb-6">
+<h1 class="font-headline text-2xl font-extrabold text-on-surface tracking-tight mb-1">Console Settings</h1>
+<p class="text-on-surface-variant font-body text-[10px] uppercase tracking-wider">Manage your terminal environment, security protocols, and data infrastructure.</p>
+</header>
+<!-- Bento Layout for Settings -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left Column: Navigation Quick Links -->
+<nav class="lg:col-span-3 flex flex-col gap-2">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container-high text-primary font-medium text-xs" href="#general">
+<span class="material-symbols-outlined text-sm" data-icon="tune">tune</span>
+                        General Preferences
+                    </a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-surface-container-low text-on-surface-variant transition-colors font-medium text-xs" href="#terminal">
+<span class="material-symbols-outlined text-sm" data-icon="terminal">terminal</span>
+                        Console Config
+                    </a>
+</nav>
+<!-- Right Column: Settings Forms -->
+<div class="lg:col-span-9 space-y-8">
+<!-- General Preferences Section -->
+<section class="scroll-mt-24" id="general">
+<div class="flex items-center gap-4 mb-8">
+<h2 class="font-headline text-xl font-bold">General Preferences</h2>
+<div class="h-px flex-1 bg-outline-variant/20"></div>
+</div>
+<div class="grid grid-cols-1 gap-6">
+<!-- Language & Locale -->
+<div class="bg-surface-container-high p-6 rounded-xl space-y-4">
+<label class="block text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Regional Locale</label>
+<div class="space-y-4">
+<div class="relative">
+<select id="REGIONAL_LOCALE" class="w-full bg-surface-container-highest border-none rounded-xl py-2 pl-4 pr-10 text-xs focus:ring-1 focus:ring-primary appearance-none">
+<option value="English (Canada)" {{ 'selected' if env_settings.REGIONAL_LOCALE == 'English (Canada)' else '' }}>English (Canada)</option>
+<option value="English (United States)" {{ 'selected' if env_settings.REGIONAL_LOCALE == 'English (United States)' else '' }}>English (United States)</option>
+<option value="English (United Kingdom)" {{ 'selected' if env_settings.REGIONAL_LOCALE == 'English (United Kingdom)' else '' }}>English (United Kingdom)</option>
+<option value="French (Canada)" {{ 'selected' if env_settings.REGIONAL_LOCALE == 'French (Canada)' else '' }}>French (Canada)</option>
+<option value="Japanese (Tokyo)" {{ 'selected' if env_settings.REGIONAL_LOCALE == 'Japanese (Tokyo)' else '' }}>Japanese (Tokyo)</option>
+<option value="German (Frankfurt)" {{ 'selected' if env_settings.REGIONAL_LOCALE == 'German (Frankfurt)' else '' }}>German (Frankfurt)</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-2 pointer-events-none text-on-surface-variant" data-icon="unfold_more">unfold_more</span>
+</div>
+<div class="relative">
+<select id="BASE_CURRENCY" class="w-full bg-surface-container-highest border-none rounded-xl py-2 pl-4 pr-10 text-xs focus:ring-1 focus:ring-primary appearance-none">
+<option value="CAD" {{ 'selected' if env_settings.BASE_CURRENCY == 'CAD' else '' }}>CAD ($) - Canadian Dollar</option>
+<option value="USD" {{ 'selected' if env_settings.BASE_CURRENCY == 'USD' else '' }}>USD ($) - US Dollar</option>
+<option value="EUR" {{ 'selected' if env_settings.BASE_CURRENCY == 'EUR' else '' }}>EUR (€) - Euro</option>
+<option value="GBP" {{ 'selected' if env_settings.BASE_CURRENCY == 'GBP' else '' }}>GBP (£) - British Pound</option>
+<option value="AUD" {{ 'selected' if env_settings.BASE_CURRENCY == 'AUD' else '' }}>AUD ($) - Australian Dollar</option>
+<option value="JPY" {{ 'selected' if env_settings.BASE_CURRENCY == 'JPY' else '' }}>JPY (¥) - Japanese Yen</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-2 pointer-events-none text-on-surface-variant" data-icon="unfold_more">unfold_more</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-surface-container-lowest/50 rounded-xl border border-outline-variant/10">
+<div>
+<span class="text-xs font-bold block">Guru Picks Quick Action</span>
+<p class="text-[10px] text-on-surface-variant/60">Default off for source-available builds. Enable only on machines with your private guru-picks tool installed.</p>
+</div>
+<label for="CAIRNIQ_ENABLE_GURU_PICKS" class="relative inline-flex items-center cursor-pointer ml-4">
+<input type="checkbox" id="CAIRNIQ_ENABLE_GURU_PICKS" class="sr-only peer" {{ 'checked' if env_settings.CAIRNIQ_ENABLE_GURU_PICKS == 'true' else '' }}>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<div class="bg-surface-container-lowest/50 rounded-xl border border-outline-variant/10 p-5 space-y-5">
+<div class="flex items-center justify-between">
+<div>
+<span class="text-xs font-bold block text-primary">Master Background Scheduler</span>
+<p class="text-[10px] text-on-surface-variant/60">Enable in-process background task execution across trading days.</p>
+</div>
+<label for="SCHEDULER_ENABLED" class="relative inline-flex items-center cursor-pointer ml-4">
+<input type="checkbox" id="SCHEDULER_ENABLED" class="sr-only peer" {{ 'checked' if env_settings.SCHEDULER_ENABLED == 'true' else '' }}>
+<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+
+<div class="pt-4 border-t border-outline-variant/10 space-y-3">
+<span class="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/70 block mb-2">Automated Engine Controls</span>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+<!-- exchange_rate -->
+<div class="flex items-center justify-between p-3 bg-surface-container-highest/30 rounded-xl border border-outline-variant/5">
+<div class="pr-2">
+<span class="text-xs font-semibold block">USD/CAD Exchange Rate</span>
+<p class="text-[9px] text-on-surface-variant/60">Hourly forex rate cache refresh</p>
+</div>
+<label for="SCHEDULER_JOB_exchange_rate" class="relative inline-flex items-center cursor-pointer shrink-0">
+<input type="checkbox" id="SCHEDULER_JOB_exchange_rate" class="sr-only peer" {{ 'checked' if env_settings.SCHEDULER_JOB_exchange_rate == 'true' else '' }}>
+<div class="w-9 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+
+<!-- portfolio_snapshot -->
+<div class="flex items-center justify-between p-3 bg-surface-container-highest/30 rounded-xl border border-outline-variant/5">
+<div class="pr-2">
+<span class="text-xs font-semibold block">Portfolio Snapshots</span>
+<p class="text-[9px] text-on-surface-variant/60">Daily post-market close snapshot</p>
+</div>
+<label for="SCHEDULER_JOB_portfolio_snapshot" class="relative inline-flex items-center cursor-pointer shrink-0">
+<input type="checkbox" id="SCHEDULER_JOB_portfolio_snapshot" class="sr-only peer" {{ 'checked' if env_settings.SCHEDULER_JOB_portfolio_snapshot == 'true' else '' }}>
+<div class="w-9 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+
+<!-- score_recommendations -->
+<div class="flex items-center justify-between p-3 bg-surface-container-highest/30 rounded-xl border border-outline-variant/5">
+<div class="pr-2">
+<span class="text-xs font-semibold block">Recommendation Scoring</span>
+<p class="text-[9px] text-on-surface-variant/60">2w/1m/3m performance benchmark vs SPY</p>
+</div>
+<label for="SCHEDULER_JOB_score_recommendations" class="relative inline-flex items-center cursor-pointer shrink-0">
+<input type="checkbox" id="SCHEDULER_JOB_score_recommendations" class="sr-only peer" {{ 'checked' if env_settings.SCHEDULER_JOB_score_recommendations == 'true' else '' }}>
+<div class="w-9 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+
+<!-- cache_cleanup -->
+<div class="flex items-center justify-between p-3 bg-surface-container-highest/30 rounded-xl border border-outline-variant/5">
+<div class="pr-2">
+<span class="text-xs font-semibold block">Daily Cache Cleanup</span>
+<p class="text-[9px] text-on-surface-variant/60">Purges temporary cache files >7 days</p>
+</div>
+<label for="SCHEDULER_JOB_cache_cleanup" class="relative inline-flex items-center cursor-pointer shrink-0">
+<input type="checkbox" id="SCHEDULER_JOB_cache_cleanup" class="sr-only peer" {{ 'checked' if env_settings.SCHEDULER_JOB_cache_cleanup == 'true' else '' }}>
+<div class="w-9 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+
+<!-- premarket_pulse -->
+<div class="flex items-center justify-between p-3 bg-surface-container-highest/30 rounded-xl border border-outline-variant/5">
+<div class="pr-2">
+<span class="text-xs font-semibold block">Pre-market Pulse & Catalyst Scan</span>
+<p class="text-[9px] text-on-surface-variant/60">Morning news digest (06:00-09:25 Eastern)</p>
+</div>
+<label for="SCHEDULER_JOB_premarket_pulse" class="relative inline-flex items-center cursor-pointer shrink-0">
+<input type="checkbox" id="SCHEDULER_JOB_premarket_pulse" class="sr-only peer" {{ 'checked' if env_settings.SCHEDULER_JOB_premarket_pulse == 'true' else '' }}>
+<div class="w-9 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+
+<!-- priority_precompute -->
+<div class="flex items-center justify-between p-3 bg-surface-container-highest/30 rounded-xl border border-outline-variant/5">
+<div class="pr-2">
+<span class="text-xs font-semibold block">Today's Priority Brief</span>
+<p class="text-[9px] text-on-surface-variant/60">Pre-market deep reasoning graph pass</p>
+</div>
+<label for="SCHEDULER_JOB_priority_precompute" class="relative inline-flex items-center cursor-pointer shrink-0">
+<input type="checkbox" id="SCHEDULER_JOB_priority_precompute" class="sr-only peer" {{ 'checked' if env_settings.SCHEDULER_JOB_priority_precompute == 'true' else '' }}>
+<div class="w-9 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+
+<!-- funnel_signal_scan -->
+<div class="flex items-center justify-between p-3 bg-surface-container-highest/30 rounded-xl border border-outline-variant/5">
+<div class="pr-2">
+<span class="text-xs font-semibold block">Nightly Broad Sector Scan</span>
+<p class="text-[9px] text-on-surface-variant/60">Neutral signal logging for backtests</p>
+</div>
+<label for="SCHEDULER_JOB_funnel_signal_scan" class="relative inline-flex items-center cursor-pointer shrink-0">
+<input type="checkbox" id="SCHEDULER_JOB_funnel_signal_scan" class="sr-only peer" {{ 'checked' if env_settings.SCHEDULER_JOB_funnel_signal_scan == 'true' else '' }}>
+<div class="w-9 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+
+<!-- edgar_events -->
+<div class="flex items-center justify-between p-3 bg-surface-container-highest/30 rounded-xl border border-outline-variant/5">
+<div class="pr-2">
+<span class="text-xs font-semibold block">SEC EDGAR Events Poll</span>
+<p class="text-[9px] text-on-surface-variant/60">8-K filings & Form 4 insider cluster buys</p>
+</div>
+<label for="SCHEDULER_JOB_edgar_events" class="relative inline-flex items-center cursor-pointer shrink-0">
+<input type="checkbox" id="SCHEDULER_JOB_edgar_events" class="sr-only peer" {{ 'checked' if env_settings.SCHEDULER_JOB_edgar_events == 'true' else '' }}>
+<div class="w-9 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+
+<!-- watch_conditions -->
+<div class="flex items-center justify-between p-3 bg-surface-container-highest/30 rounded-xl border border-outline-variant/5">
+<div class="pr-2">
+<div class="flex items-center gap-2">
+<span class="text-xs font-semibold block">Watch Conditions Evaluator</span>
+<span class="px-1.5 py-0.5 rounded text-[8px] font-black uppercase bg-primary/10 text-primary">0 LLM Calls</span>
+</div>
+<p class="text-[9px] text-on-surface-variant/60">Zero-LLM price read checking advisor triggers</p>
+</div>
+<div class="flex items-center gap-3 shrink-0">
+<select id="SCHEDULER_COOLDOWN_watch_conditions" class="bg-surface-container-lowest border border-outline-variant/20 rounded-lg py-1 px-2 text-[10px] focus:ring-1 focus:ring-primary text-on-surface-variant">
+<option value="900" {{ 'selected' if env_settings.SCHEDULER_COOLDOWN_watch_conditions == '900' else '' }}>Every 15 min</option>
+<option value="1800" {{ 'selected' if env_settings.SCHEDULER_COOLDOWN_watch_conditions in (None, '', '1800') else '' }}>Every 30 min (Default)</option>
+<option value="3600" {{ 'selected' if env_settings.SCHEDULER_COOLDOWN_watch_conditions == '3600' else '' }}>Every 1 hour</option>
+<option value="7200" {{ 'selected' if env_settings.SCHEDULER_COOLDOWN_watch_conditions == '7200' else '' }}>Every 2 hours</option>
+<option value="14400" {{ 'selected' if env_settings.SCHEDULER_COOLDOWN_watch_conditions == '14400' else '' }}>Every 4 hours</option>
+</select>
+<label for="SCHEDULER_JOB_watch_conditions" class="relative inline-flex items-center cursor-pointer shrink-0">
+<input type="checkbox" id="SCHEDULER_JOB_watch_conditions" class="sr-only peer" {{ 'checked' if env_settings.SCHEDULER_JOB_watch_conditions == 'true' else '' }}>
+<div class="w-9 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+
+
+<!-- intraday_sentinel -->
+<div class="flex items-center justify-between p-3 bg-surface-container-highest/30 rounded-xl border border-outline-variant/5">
+<div class="pr-2">
+<span class="text-xs font-semibold block">Intraday Market Sentinel</span>
+<p class="text-[9px] text-on-surface-variant/60">6h market regime & technical cross scanner</p>
+</div>
+<label for="SCHEDULER_JOB_intraday_sentinel" class="relative inline-flex items-center cursor-pointer shrink-0">
+<input type="checkbox" id="SCHEDULER_JOB_intraday_sentinel" class="sr-only peer" {{ 'checked' if env_settings.SCHEDULER_JOB_intraday_sentinel == 'true' else '' }}>
+<div class="w-9 h-5 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+
+</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</section>
+<!-- Console Configuration Section -->
+<section class="scroll-mt-24" id="terminal">
+    <div class="flex items-center gap-4 mb-8">
+        <h2 class="font-headline text-xl font-bold">Console Infrastructure</h2>
+        <div class="h-px flex-1 bg-outline-variant/20"></div>
+    </div>
+    <div class="space-y-6">
+        
+        <!-- AI Models & Infrastructure -->
+        <div class="bg-surface-container-high rounded-xl p-6 border border-primary/20 shadow-[0_0_20px_rgba(78,222,163,0.05)]">
+            <div class="flex items-center gap-3 mb-6">
+                <span class="text-xl">🧠</span>
+                <h3 class="text-base font-bold text-primary tracking-tight">AI Models &amp; Infrastructure</h3>
+            </div>
+            <p class="text-[10px] text-on-surface-variant -mt-4 mb-6">Configure the underlying LLM provider and API access.</p>
+            
+            <div class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant/60">LLM Provider</label>
+                        <div class="relative">
+                            <select id="LLM_PROVIDER" class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 pl-4 pr-10 text-xs focus:ring-1 focus:ring-primary appearance-none">
+                                <option value="bedrock" {{ 'selected' if env_settings.LLM_PROVIDER == 'bedrock' else '' }}>AWS Bedrock (Default)</option>
+                                <option value="openai" {{ 'selected' if env_settings.LLM_PROVIDER == 'openai' else '' }}>OpenAI</option>
+                                <option value="anthropic" {{ 'selected' if env_settings.LLM_PROVIDER == 'anthropic' else '' }}>Anthropic</option>
+                                <option value="azure" {{ 'selected' if env_settings.LLM_PROVIDER == 'azure' else '' }}>Azure OpenAI</option>
+                                <option value="vertexai" {{ 'selected' if env_settings.LLM_PROVIDER in ('vertexai', 'google') else '' }}>Gemini</option>
+                            </select>
+                            <span class="material-symbols-outlined absolute right-3 top-2 pointer-events-none text-on-surface-variant" data-icon="unfold_more">unfold_more</span>
+                        </div>
+                        <p id="provider-hint" class="text-[10px] text-on-surface-variant/60 italic mt-1"></p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant/60">Primary Model
+                            <span class="normal-case text-[9px] text-on-surface-variant/60 ml-1">(reasoning &amp; synthesis)</span>
+                        </label>
+                        <input type="text" id="AIDLC_MODEL_ID" value="{{ env_settings.AIDLC_MODEL_ID }}"
+                            class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all" />
+                        <button type="button" id="fill-primary-default" class="text-[10px] text-primary/70 hover:text-primary underline-offset-2 hover:underline transition-colors">use default for provider</button>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant/60">Fast Model
+                            <span class="normal-case text-[9px] text-on-surface-variant/60 ml-1">(risk checks, data gathering)</span>
+                        </label>
+                        <input type="text" id="AIDLC_SONNET_MODEL_ID" value="{{ env_settings.AIDLC_SONNET_MODEL_ID }}"
+                            class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all" />
+                        <button type="button" id="fill-fast-default" class="text-[10px] text-primary/70 hover:text-primary underline-offset-2 hover:underline transition-colors">use default for provider</button>
+                    </div>
+                </div>
+
+                <!-- Embedding model — optional, follows the selected LLM provider.
+                     Anthropic has no native embeddings API so we show an info note
+                     instead. Toggled by _applyProviderUI(). -->
+                <div id="embed-model-row" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="block text-xs font-bold uppercase tracking-widest text-on-surface-variant/60">Embedding Model
+                            <span class="normal-case text-[9px] text-on-surface-variant/60 ml-1">(tool semantic search · optional)</span>
+                        </label>
+                        <input type="text" id="AIDLC_EMBED_MODEL_ID" value="{{ env_settings.AIDLC_EMBED_MODEL_ID }}"
+                            class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all" />
+                        <p id="embed-model-hint" class="text-[9px] text-on-surface-variant/50 italic"></p>
+                        <button type="button" id="fill-embed-default" class="text-[10px] text-primary/70 hover:text-primary underline-offset-2 hover:underline transition-colors">use default for provider</button>
+                    </div>
+                </div>
+                <div id="embed-anthropic-note" style="display:none">
+                    <p class="text-[9px] text-on-surface-variant/50 italic">Anthropic has no native embeddings API — dense tool search (FAISS) is unavailable for this provider. BM25 keyword search is used automatically. No configuration needed.</p>
+                </div>
+
+                <!-- Provider Credentials Section. Each group is tagged with
+                     data-provider-section and only the group matching the selected
+                     LLM provider is shown (toggled by _applyProviderUI). -->
+                <div class="pt-4 border-t border-outline-variant/20 space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="space-y-2" data-provider-section="openai">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">OpenAI API Key</label>
+                            <a href="https://platform.openai.com/api-keys" target="_blank" class="lowercase text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 transition-colors">get key <span class="material-symbols-outlined text-[12px]">open_in_new</span></a>
+                        </div>
+                            <div class="relative group">
+                                <input type="password" id="OPENAI_API_KEY" value="{{ env_settings.OPENAI_API_KEY }}" 
+                                    class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" placeholder="Required if using OpenAI" />
+                                <button onclick="toggleMask('OPENAI_API_KEY')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                            </div>
+                        </div>
+                        <div class="space-y-2" data-provider-section="anthropic">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Anthropic API Key</label>
+                            <a href="https://console.anthropic.com/" target="_blank" class="lowercase text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 transition-colors">get key <span class="material-symbols-outlined text-[12px]">open_in_new</span></a>
+                        </div>
+                            <div class="relative group">
+                                <input type="password" id="ANTHROPIC_API_KEY" value="{{ env_settings.ANTHROPIC_API_KEY }}"
+                                    class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" placeholder="Required if using Anthropic directly" />
+                                <button onclick="toggleMask('ANTHROPIC_API_KEY')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                            </div>
+                        </div>
+                        <div class="space-y-2" data-provider-section="google">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Google API Key</label>
+                            <a href="https://aistudio.google.com/apikey" target="_blank" class="lowercase text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 transition-colors">get key <span class="material-symbols-outlined text-[12px]">open_in_new</span></a>
+                        </div>
+                            <div class="relative group">
+                                <input type="password" id="GOOGLE_API_KEY" value="{{ env_settings.GOOGLE_API_KEY }}"
+                                    class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" placeholder="Required if using Google (Gemini)" />
+                                <button onclick="toggleMask('GOOGLE_API_KEY')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-6" data-provider-section="vertexai">
+                        <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Gemini Service Account Key (JSON)</label>
+                            <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" class="lowercase text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 transition-colors">create key <span class="material-symbols-outlined text-[12px]">open_in_new</span></a>
+                        </div>
+                            <textarea id="GOOGLE_SERVICE_ACCOUNT_KEY" rows="4"
+                                class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs font-mono focus:ring-1 focus:ring-primary transition-all" placeholder='Paste the full service-account key JSON here — { "type": "service_account", "project_id": "...", ... }'>{{ env_settings.GOOGLE_SERVICE_ACCOUNT_KEY }}</textarea>
+                            <p class="text-[9px] text-on-surface-variant/50 italic">Stored in your OS keychain, just like your other API keys. The project is read from the key — no separate login needed.</p>
+                        </div>
+                        <div class="space-y-2 md:w-1/2">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Region
+                                <span class="normal-case text-[9px] text-on-surface-variant/60 ml-1">(optional)</span>
+                            </label>
+                            <input type="text" id="GOOGLE_CLOUD_LOCATION" value="{{ env_settings.GOOGLE_CLOUD_LOCATION }}"
+                                class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all" placeholder="global (default)" />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6" data-provider-section="azure">
+                        <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Azure OpenAI API Key</label>
+                            <a href="https://portal.azure.com/" target="_blank" class="lowercase text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 transition-colors">get key <span class="material-symbols-outlined text-[12px]">open_in_new</span></a>
+                        </div>
+                            <div class="relative group">
+                                <input type="password" id="AZURE_OPENAI_API_KEY" value="{{ env_settings.AZURE_OPENAI_API_KEY }}"
+                                    class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" placeholder="Required if using Azure OpenAI" />
+                                <button onclick="toggleMask('AZURE_OPENAI_API_KEY')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Azure OpenAI Endpoint</label>
+                            <input type="text" id="AZURE_OPENAI_ENDPOINT" value="{{ env_settings.AZURE_OPENAI_ENDPOINT }}"
+                                class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all" placeholder="https://<resource>.openai.azure.com/" />
+                            <p class="text-[9px] text-on-surface-variant/50 italic">Either form works: the bare resource URL, or the Foundry "…/openai/v1" endpoint (used for DeepSeek/Llama/other Foundry models).</p>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Azure API Version
+                                <span class="normal-case text-[9px] text-on-surface-variant/60 ml-1">(optional)</span>
+                            </label>
+                            <input type="text" id="AZURE_OPENAI_API_VERSION" value="{{ env_settings.AZURE_OPENAI_API_VERSION }}"
+                                class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all" placeholder="2024-10-21 (default)" />
+                        </div>
+                    </div>
+
+                    <!-- Azure fast-tier overrides: only needed when the Fast Model's
+                         deployment lives in a DIFFERENT Azure resource (e.g. regional
+                         model availability). Blank = reuse the primary key/endpoint. -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6" data-provider-section="azure">
+                        <div class="space-y-2">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Azure Fast-Tier Key
+                                <span class="normal-case text-[9px] text-on-surface-variant/60 ml-1">(optional)</span>
+                            </label>
+                            <div class="relative group">
+                                <input type="password" id="AZURE_OPENAI_API_KEY_FAST" value="{{ env_settings.AZURE_OPENAI_API_KEY_FAST }}"
+                                    class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" placeholder="Blank = reuse primary key" />
+                                <button onclick="toggleMask('AZURE_OPENAI_API_KEY_FAST')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Azure Fast-Tier Endpoint
+                                <span class="normal-case text-[9px] text-on-surface-variant/60 ml-1">(optional)</span>
+                            </label>
+                            <input type="text" id="AZURE_OPENAI_ENDPOINT_FAST" value="{{ env_settings.AZURE_OPENAI_ENDPOINT_FAST }}"
+                                class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all" placeholder="Blank = reuse primary endpoint" />
+                            <p class="text-[9px] text-on-surface-variant/50 italic">Use only when the Fast Model is deployed in a different Azure resource than the Primary Model.</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6" data-provider-section="bedrock">
+                        <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">AWS Access Key Id</label>
+                            <a href="https://console.aws.amazon.com/iam/" target="_blank" class="lowercase text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 transition-colors">get key <span class="material-symbols-outlined text-[12px]">open_in_new</span></a>
+                        </div>
+                            <div class="relative group">
+                                <input type="password" id="AWS_ACCESS_KEY_ID" value="{{ env_settings.AWS_ACCESS_KEY_ID }}" 
+                                    class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" placeholder="For Bedrock" />
+                                <button onclick="toggleMask('AWS_ACCESS_KEY_ID')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">AWS Secret Access Key</label>
+                            <div class="relative group">
+                                <input type="password" id="AWS_SECRET_ACCESS_KEY" value="{{ env_settings.AWS_SECRET_ACCESS_KEY }}" 
+                                    class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" placeholder="For Bedrock" />
+                                <button onclick="toggleMask('AWS_SECRET_ACCESS_KEY')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">AWS Region</label>
+                            <input type="text" id="AWS_REGION" value="{{ env_settings.AWS_REGION }}" 
+                                class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Data APIs Form -->
+        <div class="bg-surface-container-high p-6 rounded-xl space-y-6">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="text-xl">📈</span>
+                <h3 class="text-base font-bold">Market Data APIs</h3>
+            </div>
+            <p class="text-[10px] text-on-surface-variant -mt-4">
+                <span class="font-semibold text-secondary">Recommended:</span> FMP provides insider trades, senate data, and earnings transcripts with no fallback.
+                <span class="font-semibold text-outline-variant">Optional:</span> Alpha Vantage, Finnhub, and Polygon enhance data quality but have fallbacks.
+            </p>
+            
+            <div class="space-y-6">
+                <!-- Alpha Vantage -->
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Alpha Vantage Api Key <span class="normal-case text-[9px] text-outline-variant ml-1 bg-surface-container-highest px-1.5 py-0.5 rounded-md">Optional Fallback</span></label>
+                            <a href="https://www.alphavantage.co/support/#api-key" target="_blank" class="lowercase text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 transition-colors">get key <span class="material-symbols-outlined text-[12px]">open_in_new</span></a>
+                        </div>
+                        <div class="relative group">
+                            <input type="password" id="ALPHA_VANTAGE_API_KEY" value="{{ env_settings.ALPHA_VANTAGE_API_KEY }}" 
+                                class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" />
+                            <button onclick="toggleMask('ALPHA_VANTAGE_API_KEY')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FMP -->
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">FMP Api Key <span class="normal-case text-[9px] text-secondary ml-1 bg-secondary/10 border border-secondary/20 px-1.5 py-0.5 rounded-md">Recommended</span></label>
+                            <a href="https://site.financialmodelingprep.com/developer/docs/" target="_blank" class="lowercase text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 transition-colors">get key <span class="material-symbols-outlined text-[12px]">open_in_new</span></a>
+                        </div>
+                        <div class="relative group">
+                            <input type="password" id="FMP_API_KEY" value="{{ env_settings.FMP_API_KEY }}" 
+                                class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" placeholder="For insider trades, senate data, earnings transcripts" />
+                            <button onclick="toggleMask('FMP_API_KEY')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Finnhub -->
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Finnhub API Key <span class="normal-case text-[9px] text-outline-variant ml-1 bg-surface-container-highest px-1.5 py-0.5 rounded-md">Optional</span></label>
+                            <a href="https://finnhub.io/dashboard" target="_blank" class="lowercase text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 transition-colors">get key <span class="material-symbols-outlined text-[12px]">open_in_new</span></a>
+                        </div>
+                        <div class="relative group">
+                            <input type="password" id="FINNHUB_API_KEY" value="{{ env_settings.FINNHUB_API_KEY }}" 
+                                class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" />
+                            <button onclick="toggleMask('FINNHUB_API_KEY')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Polygon -->
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Polygon.io API Key <span class="normal-case text-[9px] text-outline-variant ml-1 bg-surface-container-highest px-1.5 py-0.5 rounded-md">Optional Fallback</span></label>
+                            <a href="https://polygon.io/dashboard/api-keys" target="_blank" class="lowercase text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 transition-colors">get key <span class="material-symbols-outlined text-[12px]">open_in_new</span></a>
+                        </div>
+                        <div class="relative group">
+                            <input type="password" id="POLYGON_API_KEY" value="{{ env_settings.POLYGON_API_KEY }}" 
+                                class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" placeholder="Optional" />
+                            <button onclick="toggleMask('POLYGON_API_KEY')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Economic & Search Data APIs Form -->
+        <div class="bg-surface-container-high p-6 rounded-xl space-y-6">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="text-xl">🌍</span>
+                <h3 class="text-base font-bold">Economic &amp; Search Tools</h3>
+            </div>
+            <p class="text-[10px] text-on-surface-variant -mt-4"><span class="font-semibold text-outline-variant">Optional:</span> FRED for macro indicators, Tavily for AI search (falls back to DuckDuckGo).</p>
+            
+            <div class="space-y-6">
+                <!-- Fred -->
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Fred Api Key <span class="normal-case text-[9px] text-outline-variant ml-1 bg-surface-container-highest px-1.5 py-0.5 rounded-md">Optional</span></label>
+                            <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" class="lowercase text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 transition-colors">get key <span class="material-symbols-outlined text-[12px]">open_in_new</span></a>
+                        </div>
+                        <div class="relative group">
+                            <input type="password" id="FRED_API_KEY" value="{{ env_settings.FRED_API_KEY }}" 
+                                class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" placeholder="For GDP, inflation, Fed rates" />
+                            <button onclick="toggleMask('FRED_API_KEY')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tavily -->
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Tavily Search API Key <span class="normal-case text-[9px] text-outline-variant ml-1 bg-surface-container-highest px-1.5 py-0.5 rounded-md">Optional</span></label>
+                            <a href="https://tavily.com/" target="_blank" class="lowercase text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 transition-colors">get key <span class="material-symbols-outlined text-[12px]">open_in_new</span></a>
+                        </div>
+                        <div class="relative group">
+                            <input type="password" id="TAVILY_API_KEY" value="{{ env_settings.TAVILY_API_KEY }}" 
+                                class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" placeholder="Falls back to DuckDuckGo search" />
+                            <button onclick="toggleMask('TAVILY_API_KEY')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Connectivity Hub -->
+        <div class="bg-surface-container-high rounded-xl overflow-hidden border border-outline-variant/10">
+            <div class="p-6 border-b border-outline-variant/10 flex items-center justify-between bg-surface-container-highest/30">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-primary" data-icon="account_balance">account_balance</span>
+                    <h3 class="text-lg font-bold">Financial Connectivity Hub</h3>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full border border-primary/20">
+                    <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                    <span class="text-[9px] font-black text-primary uppercase tracking-widest">Active Sync</span>
+                </div>
+            </div>
+
+            <div class="p-6 space-y-8">
+                <!-- Questrade Sub-section -->
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">🏦</span>
+                            <span class="text-sm font-bold uppercase tracking-wider">Questrade (Canada)</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <a href="https://www.questrade.com/api/documentation" target="_blank" class="lowercase text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 transition-colors">get token <span class="material-symbols-outlined text-[12px]">open_in_new</span></a>
+                            <!-- Custom Toggle -->
+                            <label for="QUESTRADE_ENABLED" class="relative inline-flex items-center cursor-pointer ml-2">
+                                <input type="checkbox" id="QUESTRADE_ENABLED" class="sr-only peer" {{ 'checked' if env_settings.QUESTRADE_ENABLED == 'true' else '' }}>
+                                <div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="relative group">
+                            <input type="password" id="QUESTRADE_REFRESH_TOKEN" value="{{ env_settings.QUESTRADE_REFRESH_TOKEN }}" 
+                                class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" placeholder="Questrade Refresh Token" />
+                            <button onclick="toggleMask('QUESTRADE_REFRESH_TOKEN')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                        </div>
+                        <p class="text-[10px] text-on-surface-variant/40 italic px-2">Enable Questrade sync to track Canadian TFSA, RRSP, and Margin accounts.</p>
+                    </div>
+                </div>
+
+                <div class="h-px bg-outline-variant/10"></div>
+
+                <!-- Alpaca Sub-section -->
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="text-lg">🦙</span>
+                            <span class="text-sm font-bold uppercase tracking-wider">Alpaca Markets (USA & International)</span>
+                        </div>
+                        <a href="https://app.alpaca.markets/paper/dashboard/portal" target="_blank" class="lowercase text-[10px] text-primary/60 hover:text-primary flex items-center gap-1 transition-colors">get keys <span class="material-symbols-outlined text-[12px]">open_in_new</span></a>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-2">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Alpaca API Key</label>
+                            <div class="relative group">
+                                <input type="password" id="ALPACA_API_KEY" value="{{ env_settings.ALPACA_API_KEY }}" 
+                                    class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" placeholder="Required for Alpaca" />
+                                <button onclick="toggleMask('ALPACA_API_KEY')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant/60">Alpaca Secret Key</label>
+                            <div class="relative group">
+                                <input type="password" id="ALPACA_SECRET_KEY" value="{{ env_settings.ALPACA_SECRET_KEY }}" 
+                                    class="w-full bg-surface-container-lowest border border-outline-variant/10 rounded-xl py-2 px-4 text-xs focus:ring-1 focus:ring-primary transition-all pr-12" placeholder="Required for Alpaca" />
+                                <button onclick="toggleMask('ALPACA_SECRET_KEY')" class="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg text-on-surface-variant/40 hover:text-primary transition-colors">visibility</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-3 p-3 bg-surface-container-lowest/50 rounded-xl border border-outline-variant/5">
+                        <span class="material-symbols-outlined text-base text-on-surface-variant/50">info</span>
+                        <p class="text-[10px] text-on-surface-variant/70 leading-snug">
+                            Paper vs live environment is auto-detected from your keys when you save.
+                            {% if env_settings.ALPACA_API_KEY and env_settings.ALPACA_SECRET_KEY %}
+                                Currently connected to
+                                {% if env_settings.ALPACA_PAPER_MODE == 'true' %}
+                                    <span class="font-black text-amber-400 uppercase tracking-widest">paper</span>.
+                                {% else %}
+                                    <span class="font-black text-primary uppercase tracking-widest">live</span>.
+                                {% endif %}
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+</div>
+</div>
+
+      </div>
+      
+      <!-- Sticky Footer / Global Save Button -->
+      <div class="mt-8 space-y-4">
+          <button onclick="saveSettings(['REGIONAL_LOCALE', 'BASE_CURRENCY', 'CAIRNIQ_ENABLE_GURU_PICKS', 'SCHEDULER_ENABLED', 'LLM_PROVIDER', 'AIDLC_MODEL_ID', 'AIDLC_SONNET_MODEL_ID', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY', 'GOOGLE_SERVICE_ACCOUNT_KEY', 'GOOGLE_CLOUD_LOCATION', 'AZURE_OPENAI_API_KEY', 'AZURE_OPENAI_ENDPOINT', 'AZURE_OPENAI_API_VERSION', 'AZURE_OPENAI_API_KEY_FAST', 'AZURE_OPENAI_ENDPOINT_FAST', 'ALPHA_VANTAGE_API_KEY', 'FMP_API_KEY', 'FRED_API_KEY', 'AWS_ACCESS_KEY_ID', 'AWS_SECRET_ACCESS_KEY', 'AWS_REGION', 'TAVILY_API_KEY', 'FINNHUB_API_KEY', 'POLYGON_API_KEY', 'QUESTRADE_REFRESH_TOKEN', 'ALPACA_API_KEY', 'ALPACA_SECRET_KEY'])"
+              class="w-full py-5 bg-[#4edea3]/10 border border-[#4edea3]/30 rounded-2xl flex items-center justify-center gap-4 hover:bg-[#4edea3]/20 transition-all group shadow-[0_0_30px_rgba(78,222,163,0.1)]">
+              <span class="material-symbols-outlined text-[#4edea3] group-hover:rotate-12 transition-transform">verified_user</span>
+              <div class="text-left">
+                  <div class="text-xs font-black uppercase tracking-[0.2em] text-[#4edea3]">Commit Infrastructure Sync</div>
+                  <div class="text-[10px] text-on-surface-variant/60 italic mt-0.5">Persist all API credentials and brokerage tokens to the core environment.</div>
+              </div>
+          </button>
+          <div class="flex items-center justify-center gap-2 py-4">
+              <span class="w-1 h-1 rounded-full bg-outline-variant/30"></span>
+              <span class="text-[9px] font-mono uppercase tracking-widest text-on-surface-variant/40">Console Version {{ app_version }}</span>
+              <span class="w-1 h-1 rounded-full bg-outline-variant/30"></span>
+          </div>
+      </div>
+    </div>
+
+  
+{% endblock %}
+{% block scripts %}
+
+<script>
+
+
+function toggleMask(id) {
+    const input = document.getElementById(id);
+    const btn = input.nextElementSibling;
+    if (input.type === "password") {
+        input.type = "text";
+        btn.textContent = "visibility_off";
+    } else {
+        input.type = "password";
+        btn.textContent = "visibility";
+    }
+}
+
+// --- Provider-aware model id helpers -------------------------------------
+// Keep these defaults in sync with agent/utils.py:_PROVIDER_DEFAULT_MODELS
+// and scripts/install/guided_setup.py.
+const PROVIDER_DEFAULTS = {
+    bedrock: {
+        primary: "us.anthropic.claude-opus-4-6-v1",
+        fast:    "us.anthropic.claude-sonnet-4-6",
+        embed:   "amazon.titan-embed-text-v2:0",
+        hint:    "Bedrock inference profile or full ARN (e.g. us.anthropic.claude-...)",
+    },
+    anthropic: {
+        primary: "claude-sonnet-4-5-20250929",
+        fast:    "claude-haiku-4-5-20250929",
+        embed:   null,  // no native embeddings API
+        hint:    "Bare Anthropic model id (no us./global./arn:aws prefix).",
+    },
+    openai: {
+        primary: "gpt-4o",
+        fast:    "gpt-4o-mini",
+        embed:   "text-embedding-3-small",
+        hint:    "OpenAI model id, e.g. gpt-4o or gpt-4o-mini.",
+    },
+    azure: {
+        // Azure has no real defaults — the "model id" is YOUR deployment name,
+        // chosen when you deployed the model in the Azure portal.
+        primary: "",
+        fast:    "",
+        embed:   "",
+        hint:    "Azure OpenAI deployment names (set when you deploy a model in the Azure portal). Endpoint + API key below.",
+    },
+    google: {
+        primary: "gemini-2.5-pro",
+        fast:    "gemini-2.5-flash",
+        embed:   "models/text-embedding-004",
+        hint:    "Gemini model id, e.g. gemini-2.5-pro or gemini-2.5-flash.",
+    },
+    vertexai: {
+        primary: "gemini-2.5-pro",
+        fast:    "gemini-2.5-flash",
+        embed:   "text-embedding-005",
+        hint:    "Gemini model id, e.g. gemini-2.5-pro or gemini-2.5-flash.",
+    },
+};
+
+// Each provider remembers its own primary/fast model so switching the dropdown
+// never discards another provider's models. Seeded from the server (the active
+// provider's entry mirrors the visible inputs). The visible AIDLC_MODEL_ID /
+// AIDLC_SONNET_MODEL_ID inputs edit whichever provider is currently selected.
+const PROVIDER_MODELS = {
+    bedrock:   { primary: "{{ env_settings.AIDLC_MODEL_ID_BEDROCK }}",   fast: "{{ env_settings.AIDLC_SONNET_MODEL_ID_BEDROCK }}",   embed: "{{ env_settings.AIDLC_EMBED_MODEL_ID_BEDROCK }}" },
+    anthropic: { primary: "{{ env_settings.AIDLC_MODEL_ID_ANTHROPIC }}", fast: "{{ env_settings.AIDLC_SONNET_MODEL_ID_ANTHROPIC }}", embed: "" },
+    openai:    { primary: "{{ env_settings.AIDLC_MODEL_ID_OPENAI }}",    fast: "{{ env_settings.AIDLC_SONNET_MODEL_ID_OPENAI }}",    embed: "{{ env_settings.AIDLC_EMBED_MODEL_ID_OPENAI }}" },
+    azure:     { primary: "{{ env_settings.AIDLC_MODEL_ID_AZURE }}",     fast: "{{ env_settings.AIDLC_SONNET_MODEL_ID_AZURE }}",     embed: "{{ env_settings.AIDLC_EMBED_MODEL_ID_AZURE }}" },
+    google:    { primary: "{{ env_settings.AIDLC_MODEL_ID_GOOGLE }}",    fast: "{{ env_settings.AIDLC_SONNET_MODEL_ID_GOOGLE }}",    embed: "{{ env_settings.AIDLC_EMBED_MODEL_ID_GOOGLE }}" },
+    vertexai:  { primary: "{{ env_settings.AIDLC_MODEL_ID_VERTEXAI }}",  fast: "{{ env_settings.AIDLC_SONNET_MODEL_ID_VERTEXAI }}",  embed: "{{ env_settings.AIDLC_EMBED_MODEL_ID_VERTEXAI }}" },
+};
+
+// The provider currently loaded into the visible model inputs (so we know whose
+// values to stash before swapping to a newly selected provider).
+let _lastProvider = (document.getElementById("LLM_PROVIDER") || {}).value || "bedrock";
+
+function _stashVisibleModels(provider) {
+    if (!PROVIDER_MODELS[provider]) PROVIDER_MODELS[provider] = { primary: "", fast: "", embed: "" };
+    const primary = document.getElementById("AIDLC_MODEL_ID");
+    const fast    = document.getElementById("AIDLC_SONNET_MODEL_ID");
+    const embed   = document.getElementById("AIDLC_EMBED_MODEL_ID");
+    if (primary) PROVIDER_MODELS[provider].primary = primary.value;
+    if (fast)    PROVIDER_MODELS[provider].fast    = fast.value;
+    if (embed)   PROVIDER_MODELS[provider].embed   = embed.value;
+}
+
+function _loadVisibleModels(provider) {
+    const m = PROVIDER_MODELS[provider] || { primary: "", fast: "", embed: "" };
+    const primary = document.getElementById("AIDLC_MODEL_ID");
+    const fast    = document.getElementById("AIDLC_SONNET_MODEL_ID");
+    const embed   = document.getElementById("AIDLC_EMBED_MODEL_ID");
+    if (primary) primary.value = m.primary || "";
+    if (fast)    fast.value    = m.fast    || "";
+    if (embed)   embed.value   = m.embed   || "";
+}
+
+function _looksLikeBedrockId(v) {
+    if (!v) return false;
+    const s = v.trim().toLowerCase();
+    return s.startsWith("us.") || s.startsWith("global.") || s.startsWith("arn:aws") || s.includes("inference-profile");
+}
+
+function _validateModelIdFormat(provider, value) {
+    if (!value) return null;
+    if (provider === "anthropic" && _looksLikeBedrockId(value)) {
+        return "Looks like a Bedrock id. For Anthropic, drop the prefix (e.g. claude-sonnet-4-5-20250929).";
+    }
+    if (provider === "openai" && _looksLikeBedrockId(value)) {
+        return "Looks like a Bedrock id. For OpenAI, use names like gpt-4o or gpt-4o-mini.";
+    }
+    if (provider === "azure" && _looksLikeBedrockId(value)) {
+        return "Looks like a Bedrock id. For Azure OpenAI, use your deployment name from the Azure portal.";
+    }
+    if (provider === "google" || provider === "vertexai") {
+        if (_looksLikeBedrockId(value)) {
+            return "Looks like a Bedrock id. For Google, use a Gemini model id (e.g. gemini-2.5-pro).";
+        }
+        if (!value.trim().toLowerCase().includes("gemini")) {
+            return "This provider expects a Gemini model id (e.g. gemini-2.5-pro or gemini-2.5-flash).";
+        }
+    }
+    if (provider === "bedrock" && value && !_looksLikeBedrockId(value) && !value.includes("anthropic")) {
+        return "Bedrock typically expects an inference profile (us.anthropic.claude-...) or ARN.";
+    }
+    return null;
+}
+
+function _setFieldWarning(id, msg) {
+    const input = document.getElementById(id);
+    if (!input) return;
+    const warnId = id + "-warn";
+    let warn = document.getElementById(warnId);
+    if (!msg) {
+        if (warn) warn.remove();
+        input.classList.remove("ring-1", "ring-orange-400");
+        return;
+    }
+    if (!warn) {
+        warn = document.createElement("p");
+        warn.id = warnId;
+        warn.className = "text-[10px] text-orange-400 mt-1";
+        input.parentNode.appendChild(warn);
+    }
+    warn.textContent = "⚠ " + msg;
+    input.classList.add("ring-1", "ring-orange-400");
+}
+
+function _applyProviderUI() {
+    const provider = (document.getElementById("LLM_PROVIDER") || {}).value || "bedrock";
+    const defaults = PROVIDER_DEFAULTS[provider] || PROVIDER_DEFAULTS.bedrock;
+
+    const primary   = document.getElementById("AIDLC_MODEL_ID");
+    const fast      = document.getElementById("AIDLC_SONNET_MODEL_ID");
+    const embed     = document.getElementById("AIDLC_EMBED_MODEL_ID");
+    const hint      = document.getElementById("provider-hint");
+    const embedHint = document.getElementById("embed-model-hint");
+    const embedRow  = document.getElementById("embed-model-row");
+    const embedNote = document.getElementById("embed-anthropic-note");
+
+    // Azure has no real defaults (deployment names are user-chosen) — show a
+    // descriptive placeholder instead of "e.g. ".
+    if (primary) primary.placeholder = defaults.primary ? "e.g. " + defaults.primary : "your deployment name";
+    if (fast)    fast.placeholder    = defaults.fast    ? "e.g. " + defaults.fast    : "your deployment name";
+    if (hint)    hint.textContent    = defaults.hint;
+
+    // Embedding model — Anthropic has no native embeddings API.
+    if (embedRow)  embedRow.style.display  = (provider === "anthropic") ? "none" : "";
+    if (embedNote) embedNote.style.display = (provider === "anthropic") ? "" : "none";
+    if (embed && provider !== "anthropic") {
+        const embedDefault = defaults.embed;
+        embed.placeholder = embedDefault
+            ? "e.g. " + embedDefault + " (Recommended)"
+            : (provider === "azure" ? "your embedding deployment name" : "");
+        if (embedHint) {
+            embedHint.textContent = embedDefault
+                ? "Leave blank to use the default: " + embedDefault
+                : (provider === "azure" ? "Use your Azure embedding deployment name." : "");
+        }
+    }
+
+    // Show only the credential fields for the selected provider. Hidden inputs
+    // keep their values (saveSettings still reads them; masked values are
+    // skipped server-side), so switching providers never loses saved keys.
+    document.querySelectorAll("[data-provider-section]").forEach((el) => {
+        el.style.display = (el.getAttribute("data-provider-section") === provider) ? "" : "none";
+    });
+
+    if (primary) _setFieldWarning("AIDLC_MODEL_ID",        _validateModelIdFormat(provider, primary.value));
+    if (fast)    _setFieldWarning("AIDLC_SONNET_MODEL_ID", _validateModelIdFormat(provider, fast.value));
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    _applyProviderUI();
+
+    const localeCurrencyDefaults = {
+        "English (Canada)": "CAD",
+        "French (Canada)": "CAD",
+        "English (United States)": "USD",
+        "English (United Kingdom)": "GBP",
+        "German (Frankfurt)": "EUR",
+        "Japanese (Tokyo)": "JPY",
+    };
+    const localeSelect = document.getElementById("REGIONAL_LOCALE");
+    const baseCurrencySelect = document.getElementById("BASE_CURRENCY");
+    let baseCurrencyTouched = false;
+    if (baseCurrencySelect) {
+        baseCurrencySelect.addEventListener("change", () => { baseCurrencyTouched = true; });
+    }
+    if (localeSelect && baseCurrencySelect) {
+        localeSelect.addEventListener("change", () => {
+            if (!baseCurrencyTouched && localeCurrencyDefaults[localeSelect.value]) {
+                baseCurrencySelect.value = localeCurrencyDefaults[localeSelect.value];
+            }
+        });
+    }
+
+    const providerSel = document.getElementById("LLM_PROVIDER");
+    if (providerSel) providerSel.addEventListener("change", () => {
+        // Stash the outgoing provider's models, then load the incoming provider's
+        // remembered models into the visible inputs — nothing is lost on switch.
+        _stashVisibleModels(_lastProvider);
+        const next = providerSel.value || "bedrock";
+        _loadVisibleModels(next);
+        _lastProvider = next;
+        _applyProviderUI();
+    });
+
+    // Keep the active provider's remembered models in sync as the user types.
+    const primary = document.getElementById("AIDLC_MODEL_ID");
+    if (primary) primary.addEventListener("input", () => { _stashVisibleModels(_lastProvider); _applyProviderUI(); });
+    const fast = document.getElementById("AIDLC_SONNET_MODEL_ID");
+    if (fast) fast.addEventListener("input", () => { _stashVisibleModels(_lastProvider); _applyProviderUI(); });
+    const embed = document.getElementById("AIDLC_EMBED_MODEL_ID");
+    if (embed) embed.addEventListener("input", () => { _stashVisibleModels(_lastProvider); });
+
+    const fillPrimary = document.getElementById("fill-primary-default");
+    if (fillPrimary) fillPrimary.addEventListener("click", () => {
+        const provider = (document.getElementById("LLM_PROVIDER") || {}).value || "bedrock";
+        const def = (PROVIDER_DEFAULTS[provider] || PROVIDER_DEFAULTS.bedrock).primary;
+        const input = document.getElementById("AIDLC_MODEL_ID");
+        if (input && def) { input.value = def; _stashVisibleModels(provider); _applyProviderUI(); }
+    });
+
+    const fillFast = document.getElementById("fill-fast-default");
+    if (fillFast) fillFast.addEventListener("click", () => {
+        const provider = (document.getElementById("LLM_PROVIDER") || {}).value || "bedrock";
+        const def = (PROVIDER_DEFAULTS[provider] || PROVIDER_DEFAULTS.bedrock).fast;
+        const input = document.getElementById("AIDLC_SONNET_MODEL_ID");
+        if (input && def) { input.value = def; _stashVisibleModels(provider); _applyProviderUI(); }
+    });
+
+    const fillEmbed = document.getElementById("fill-embed-default");
+    if (fillEmbed) fillEmbed.addEventListener("click", () => {
+        const provider = (document.getElementById("LLM_PROVIDER") || {}).value || "bedrock";
+        const def = (PROVIDER_DEFAULTS[provider] || PROVIDER_DEFAULTS.bedrock).embed;
+        const input = document.getElementById("AIDLC_EMBED_MODEL_ID");
+        if (input && def) { input.value = def; _stashVisibleModels(provider); _applyProviderUI(); }
+    });
+});
+// --- End provider-aware model id helpers ---------------------------------
+
+async function saveSettings(keys) {
+    const settings = {};
+    keys.forEach(k => {
+        const input = document.getElementById(k);
+        if (input) settings[k] = input.type === 'checkbox' ? (input.checked ? 'true' : 'false') : input.value;
+    });
+
+    // Add Questrade toggle
+    const qtToggle = document.getElementById('QUESTRADE_ENABLED');
+    if (qtToggle) settings['QUESTRADE_ENABLED'] = qtToggle.checked ? 'true' : 'false';
+
+    // Add per-job Scheduler toggles & cooldown overrides
+    document.querySelectorAll('[id^="SCHEDULER_JOB_"]').forEach(el => {
+        settings[el.id] = el.checked ? 'true' : 'false';
+    });
+    document.querySelectorAll('[id^="SCHEDULER_COOLDOWN_"]').forEach(el => {
+        settings[el.id] = el.value;
+    });
+
+    // Persist models PER PROVIDER so switching never loses another provider's
+    // models. Each provider's remembered values go to AIDLC_MODEL_ID_<PROVIDER>;
+    // the generic AIDLC_MODEL_ID mirrors the ACTIVE provider (legacy readers + the
+    // env defaults still work). _resolve_model_id() prefers the scoped var.
+    _stashVisibleModels(_lastProvider);
+    const activeProvider = (document.getElementById("LLM_PROVIDER") || {}).value || "bedrock";
+    Object.keys(PROVIDER_MODELS).forEach(p => {
+        const suffix = p.toUpperCase();
+        const isActive = (p === activeProvider);
+        const primary = PROVIDER_MODELS[p].primary || "";
+        const fast    = PROVIDER_MODELS[p].fast    || "";
+        const embed   = PROVIDER_MODELS[p].embed   || "";
+        // For the active provider always persist (even blank = intentional clear).
+        // For other providers skip empty values — this prevents switching away from
+        // a provider from erasing its model IDs in .env.
+        if (isActive || primary) settings["AIDLC_MODEL_ID_" + suffix]        = primary;
+        if (isActive || fast)    settings["AIDLC_SONNET_MODEL_ID_" + suffix] = fast;
+        if (isActive || embed)   settings["AIDLC_EMBED_MODEL_ID_" + suffix]  = embed;
+    });
+    const active = PROVIDER_MODELS[activeProvider] || { primary: "", fast: "", embed: "" };
+    settings["AIDLC_MODEL_ID"]        = active.primary || "";
+    settings["AIDLC_SONNET_MODEL_ID"] = active.fast    || "";
+    settings["AIDLC_EMBED_MODEL_ID"]  = active.embed   || "";
+
+    try {
+        const response = await fetch('/api/settings/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ settings })
+        });
+        const result = await response.json();
+        if (result.success) {
+            alert('Infrastructure configuration updated successfully.');
+            location.reload(); // Reload to update masked view
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (e) {
+        alert('Failed to connect to CairnIQ backend.');
+    }
+}
+
+
+</script>
+<style>
+/* Markdown styles */
+.markdown-content p { margin-bottom: 1rem; color: #b9c8de; }
+.markdown-content blockquote { padding-left: 1rem; border-left: 4px solid #4edea3; color: #b9c8de; font-style: italic; }
+.markdown-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; color: #b9c8de; }
+.markdown-content li { margin-bottom: 0.5rem; }
+.markdown-content strong { color: #4edea3; }
+.markdown-content h1, .markdown-content h2, .markdown-content h3, .markdown-content h4 { color: #dae2fd; font-family: 'Manrope', sans-serif; font-weight: bold; margin-top: 1.5rem; margin-bottom: 0.5rem;}
+</style>
+{% endblock %}

@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+{% block title %}CairnIQ | Alerts & Watch Conditions{% endblock %}
+
+{% block content %}
+<div class="flex-1 overflow-y-auto custom-scrollbar p-8">
+  <div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-black font-headline tracking-tight">Proactive Intelligence</h1>
+        <p class="text-xs text-on-surface-variant mt-1">The advisor calling first — regime flips, action-required signals, and active watch conditions.</p>
+      </div>
+      <button id="mark-all-btn" onclick="markAllRead()" class="hidden px-4 py-2 rounded-xl text-xs font-bold bg-surface-container-highest border border-outline-variant/20 text-on-surface-variant hover:text-primary hover:border-primary/30 transition-colors">
+        Mark all read
+      </button>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex items-center gap-2 border-b border-outline-variant/15 pb-3">
+      <button id="tab-btn-alerts" onclick="switchTab('alerts')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all bg-surface-container-high text-primary border border-primary/30">
+        <span class="material-symbols-outlined text-sm">notifications</span>
+        <span>Triggered Alerts</span>
+        <span id="alerts-tab-count" class="hidden px-1.5 py-0.5 rounded-md text-[10px] font-black bg-primary/20 text-primary">0</span>
+      </button>
+      <button id="tab-btn-watch" onclick="switchTab('watch')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-high/50">
+        <span class="material-symbols-outlined text-sm">visibility</span>
+        <span>Active Watch Triggers</span>
+        <span id="watch-tab-count" class="hidden px-1.5 py-0.5 rounded-md text-[10px] font-black bg-surface-container-highest text-on-surface-variant/80">0</span>
+      </button>
+    </div>
+
+    <!-- TAB 1: Triggered Alerts View -->
+    <div id="view-alerts" class="space-y-3">
+      <div id="alerts-list" class="space-y-3"></div>
+
+      <div id="alerts-empty" class="hidden glass-panel rounded-2xl border border-outline-variant/10 p-12 text-center">
+        <span class="material-symbols-outlined text-4xl text-on-surface-variant/30">notifications_paused</span>
+        <p class="text-sm text-on-surface-variant mt-4">No alerts yet. When the advisor has something to say, it lands here.</p>
+      </div>
+    </div>
+
+    <!-- TAB 2: Active Watch Triggers View -->
+    <div id="view-watch" class="hidden space-y-4">
+      <div id="watch-list" class="space-y-3"></div>
+
+      <div id="watch-empty" class="hidden glass-panel rounded-2xl border border-outline-variant/10 p-12 text-center">
+        <span class="material-symbols-outlined text-4xl text-on-surface-variant/30">radar</span>
+        <p class="text-sm text-on-surface-variant mt-4">No active watch conditions.</p>
+        <p class="text-xs text-on-surface-variant/60 mt-1 max-w-md mx-auto">When the advisor sets price triggers, entry levels, or scenario invalidations in your analysis, they land here for automated 30-minute market monitoring.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SEV = {
+  critical: { icon: 'error',           cls: 'text-error',   border: 'border-error/30',   bg: 'bg-error/5' },
+  warning:  { icon: 'warning',         cls: 'text-amber-400', border: 'border-amber-400/30', bg: 'bg-amber-400/5' },
+  info:     { icon: 'notifications',   cls: 'text-primary', border: 'border-primary/20', bg: 'bg-primary/5' },
+};
+
+let currentTab = 'alerts';
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function relTime(iso) {
+  if (!iso) return '';
+  const t = new Date(iso);
+  if (isNaN(t.getTime())) return String(iso);
+  const s = Math.max(0, (Date.now() - t.getTime()) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return `${Math.floor(s/60)}m ago`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`;
+  return t.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' +
+         t.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  const btnAlerts = document.getElementById('tab-btn-alerts');
+  const btnWatch = document.getElementById('tab-btn-watch');
+  const viewAlerts = document.getElementById('view-alerts');
+  const viewWatch = document.getElementById('view-watch');
+  const markBtn = document.getElementById('mark-all-btn');
+
+  if (tab === 'alerts') {
+    btnAlerts.className = 'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all bg-surface-container-high text-primary border border-primary/30';
+    btnWatch.className = 'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-high/50';
+    viewAlerts.classList.remove('hidden');
+    viewWatch.classList.add('hidden');
+    loadAlerts();
+  } else {
+    btnWatch.className = 'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all bg-surface-container-high text-primary border border-primary/30';
+    btnAlerts.className = 'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-high/50';
+    viewWatch.classList.remove('hidden');
+    viewAlerts.classList.add('hidden');
+    markBtn.classList.add('hidden');
+    loadWatchConditions();
+  }
+}
+
+function renderAlert(a) {
+  const sev = SEV[a.severity] || SEV.info;
+  const div = document.createElement('div');
+  div.className = `glass-panel rounded-xl border ${a.read ? 'border-outline-variant/10 opacity-60' : sev.border + ' ' + sev.bg} p-4 flex gap-3 transition-colors cursor-pointer hover:border-primary/40`;
+  div.dataset.alertId = a.id;
+  div.onclick = () => markRead([a.id], div);
+  div.innerHTML = `
+    <span class="material-symbols-outlined ${sev.cls} shrink-0 mt-0.5">${sev.icon}</span>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2">
+        <p class="text-sm font-bold truncate">${esc(a.title)}</p>
+        ${a.read ? '' : '<span class="w-1.5 h-1.5 rounded-full bg-primary shrink-0"></span>'}
+      </div>
+      <p class="text-xs text-on-surface-variant mt-1 leading-relaxed break-words">${esc(a.message)}</p>
+      <div class="flex items-center gap-3 mt-2 text-[10px] uppercase tracking-widest text-on-surface-variant/60">
+        ${a.source ? `<span>${esc(a.source)}</span>` : ''}
+        <span>${relTime(a.ts)}</span>
+        ${(a.refreshed_count || 0) > 0 ? `<span>×${a.refreshed_count + 1}</span>` : ''}
+      </div>
+    </div>`;
+  return div;
+}
+
+let knownIds = new Set();
+
+async function loadAlerts() {
+  try {
+    const res = await fetch('/api/alerts?limit=100');
+    if (!res.ok) return;
+    const data = await res.json();
+    const list = document.getElementById('alerts-list');
+    const empty = document.getElementById('alerts-empty');
+    const btn = document.getElementById('mark-all-btn');
+    const countBadge = document.getElementById('alerts-tab-count');
+    list.innerHTML = '';
+    knownIds = new Set();
+    for (const a of data.alerts) {
+      knownIds.add(a.id);
+      list.appendChild(renderAlert(a));
+    }
+    empty.classList.toggle('hidden', data.alerts.length > 0);
+    btn.classList.toggle('hidden', data.unread_count === 0 || currentTab !== 'alerts');
+
+    if (data.unread_count > 0) {
+      countBadge.textContent = data.unread_count;
+      countBadge.classList.remove('hidden');
+    } else {
+      countBadge.classList.add('hidden');
+    }
+    updateBadge(data.unread_count);
+  } catch (e) {}
+}
+
+function prependAlert(a) {
+  if (knownIds.has(a.id)) return;
+  knownIds.add(a.id);
+  document.getElementById('alerts-empty').classList.add('hidden');
+  document.getElementById('alerts-list').prepend(renderAlert(a));
+  if (currentTab === 'alerts') {
+    document.getElementById('mark-all-btn').classList.remove('hidden');
+  }
+}
+
+async function markRead(ids, el) {
+  try {
+    const res = await fetch('/api/alerts/mark_read', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    if (el) {
+      el.classList.add('opacity-60');
+      el.classList.remove(SEV.critical.bg, SEV.warning.bg, SEV.info.bg);
+      const dot = el.querySelector('.bg-primary.rounded-full');
+      if (dot) dot.remove();
+    }
+    updateBadge(data.unread_count);
+    if (data.unread_count === 0) document.getElementById('mark-all-btn').classList.add('hidden');
+  } catch (e) {}
+}
+
+async function markAllRead() {
+  try {
+    const res = await fetch('/api/alerts/mark_read', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ all: true })
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    updateBadge(data.unread_count);
+    loadAlerts();
+  } catch (e) {}
+}
+
+function renderWatchCondition(c) {
+  const div = document.createElement('div');
+  div.className = 'glass-panel rounded-xl border border-outline-variant/10 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-primary/30 transition-all';
+
+  const unit = c.metric === 'pct_change' ? '%' : '';
+  const prefix = c.metric === 'pct_change' ? '' : '$';
+  const lastValDisp = (c.last_value !== undefined && c.last_value !== null) ? `${prefix}${c.last_value}${unit}` : 'pending check';
+
+  div.innerHTML = `
+    <div class="flex-1 min-w-0 space-y-2">
+      <div class="flex items-center gap-3 flex-wrap">
+        <span class="px-2.5 py-1 rounded-lg text-xs font-black bg-primary/10 border border-primary/20 text-primary uppercase font-mono tracking-wider">${esc(c.symbol)}</span>
+        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-surface-container-highest uppercase text-on-surface-variant">${esc(c.metric)} ${esc(c.operator)} ${prefix}${c.threshold}${unit}</span>
+        ${c.direction ? `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-surface-container-highest text-secondary">${esc(c.direction)}</span>` : ''}
+        ${c.source ? `<span class="text-[10px] uppercase tracking-widest text-on-surface-variant/60 font-medium">via ${esc(c.source)}</span>` : ''}
+      </div>
+
+      <p class="text-xs font-bold text-on-surface leading-snug">${esc(c.label)}</p>
+      ${c.action ? `<p class="text-[11px] text-on-surface-variant/80 italic leading-snug">Action: ${esc(c.action)}</p>` : ''}
+
+      <div class="flex items-center gap-4 text-[10px] text-on-surface-variant/60 pt-1">
+        <span>Last quote: <strong class="text-on-surface">${esc(lastValDisp)}</strong></span>
+        ${c.checked_at ? `<span>Checked: ${relTime(c.checked_at)}</span>` : '<span>Checked: pending market tick</span>'}
+        ${c.created_at ? `<span>Set: ${relTime(c.created_at)}</span>` : ''}
+      </div>
+    </div>
+
+    <div class="shrink-0 flex items-center gap-2 border-t md:border-t-0 border-outline-variant/10 pt-3 md:pt-0">
+      <button onclick="cancelWatchCondition('${esc(c.id)}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-error/10 text-error hover:bg-error/20 border border-error/20 transition-colors flex items-center gap-1">
+        <span class="material-symbols-outlined text-sm">cancel</span>
+        <span>Cancel</span>
+      </button>
+    </div>
+  `;
+  return div;
+}
+
+async function loadWatchConditions() {
+  try {
+    const res = await fetch('/api/watch_conditions');
+    if (!res.ok) return;
+    const data = await res.json();
+    const list = document.getElementById('watch-list');
+    const empty = document.getElementById('watch-empty');
+    const countBadge = document.getElementById('watch-tab-count');
+
+    list.innerHTML = '';
+    const activeConditions = data.active || [];
+
+    if (activeConditions.length > 0) {
+      countBadge.textContent = activeConditions.length;
+      countBadge.classList.remove('hidden');
+    } else {
+      countBadge.classList.add('hidden');
+    }
+
+    for (const c of activeConditions) {
+      list.appendChild(renderWatchCondition(c));
+    }
+    empty.classList.toggle('hidden', activeConditions.length > 0);
+  } catch (e) {}
+}
+
+async function cancelWatchCondition(conditionId) {
+  try {
+    const res = await fetch(`/api/watch_conditions/${encodeURIComponent(conditionId)}/cancel`, {
+      method: 'POST'
+    });
+    if (!res.ok) return;
+    loadWatchConditions();
+  } catch (e) {}
+}
+
+// Live delivery
+(function initAlertsLiveLink() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws`;
+  function connect() {
+    const socket = new WebSocket(wsUrl);
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'alert' && data.data) {
+          prependAlert(data.data);
+          if (typeof bumpAlertsBadge === 'function') bumpAlertsBadge();
+        }
+      } catch (e) {}
+    };
+    socket.onclose = () => setTimeout(connect, 5000);
+  }
+  connect();
+})();
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadAlerts();
+  loadWatchConditions();
+});
+</script>
+{% endblock %}
+

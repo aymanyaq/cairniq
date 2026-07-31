@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <!-- Unified CairnIQ Header -->
+    <header class="flex justify-between items-center px-8 h-16 w-full bg-[#131b2e] font-['Manrope'] font-bold uppercase tracking-widest border-b border-[#45464d]/15 shrink-0 z-10">
+      <div class="flex items-center gap-6">
+        <span class="text-xl font-extrabold text-[#dae2fd]">CAIRNIQ // ADVISOR LEDGER</span>
+      </div>
+    </header>
+
+    <div class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-6">
+        <div class="mb-2">
+            <h2 class="text-xs font-bold text-on-surface uppercase tracking-wider">Advisor Performance & Ledger</h2>
+            <p class="text-[10px] text-on-surface/40 mt-0.5">Realized performance metrics of actionable advice vs. the S&P 500 (SPY) benchmark.</p>
+        </div>
+
+        <!-- Loading State -->
+        <div id="ledger-loading" class="flex flex-col items-center justify-center p-12 bg-surface-container-high rounded-xl border border-outline-variant/10 min-h-[400px]">
+            <div class="w-10 h-10 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4"></div>
+            <p class="text-xs text-on-surface/40 italic">Retrieving and scoring recommendations...</p>
+        </div>
+
+        <!-- Error State (hidden by default) -->
+        <div id="ledger-error" class="hidden p-6 bg-error-container/10 border border-error/20 rounded-xl text-center">
+            <span class="material-symbols-outlined text-error text-4xl mb-2">error</span>
+            <h3 class="text-sm font-bold text-on-surface mb-1">Failed to Load Ledger</h3>
+            <p class="text-xs text-on-surface-variant mb-4">An error occurred while fetching scored recommendations.</p>
+            <button onclick="fetchRecommendations()" class="px-4 py-2 bg-surface-container-highest text-xs font-bold rounded-lg border border-outline-variant/20 hover:bg-surface-bright transition-colors">Retry</button>
+        </div>
+
+        <!-- Main Content (hidden by default until loaded) -->
+        <div id="ledger-content" class="hidden space-y-6">
+            <!-- Horizon Metrics Grid -->
+            <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- 2w Horizon -->
+                <div class="bg-surface-container-high p-4 rounded-xl border border-outline-variant/10">
+                    <p class="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mb-1 font-headline">2-Week Horizon</p>
+                    <div class="flex items-baseline gap-2">
+                        <span id="stat-2w-hitrate" class="text-2xl font-headline font-black text-on-surface">--%</span>
+                        <span id="stat-2w-alpha" class="text-xs font-bold text-primary">--% Avg Alpha</span>
+                    </div>
+                    <p id="stat-2w-count" class="text-[9px] text-on-surface/30 mt-1">-- calls scored</p>
+                </div>
+                <!-- 1m Horizon -->
+                <div class="bg-surface-container-high p-4 rounded-xl border border-outline-variant/10">
+                    <p class="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mb-1 font-headline">1-Month Horizon</p>
+                    <div class="flex items-baseline gap-2">
+                        <span id="stat-1m-hitrate" class="text-2xl font-headline font-black text-on-surface">--%</span>
+                        <span id="stat-1m-alpha" class="text-xs font-bold text-primary">--% Avg Alpha</span>
+                    </div>
+                    <p id="stat-1m-count" class="text-[9px] text-on-surface/30 mt-1">-- calls scored</p>
+                </div>
+                <!-- 3m Horizon -->
+                <div class="bg-surface-container-high p-4 rounded-xl border border-outline-variant/10">
+                    <p class="text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mb-1 font-headline">3-Month Horizon</p>
+                    <div class="flex items-baseline gap-2">
+                        <span id="stat-3m-hitrate" class="text-2xl font-headline font-black text-on-surface">--%</span>
+                        <span id="stat-3m-alpha" class="text-xs font-bold text-primary">--% Avg Alpha</span>
+                    </div>
+                    <p id="stat-3m-count" class="text-[9px] text-on-surface/30 mt-1">-- calls scored</p>
+                </div>
+            </section>
+
+            <!-- Confidence and Summary Row -->
+            <section class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                <div class="lg:col-span-4 bg-surface-container-low rounded-xl p-4 border border-outline-variant/10">
+                    <h3 class="text-xs font-bold font-headline mb-3 uppercase tracking-wider text-on-surface">Stated Confidence Accuracy</h3>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="bg-surface-container p-3 rounded-lg border border-outline-variant/5">
+                            <p class="text-[9px] text-on-surface-variant uppercase font-bold">HIGH Confidence</p>
+                            <p id="conf-high-rate" class="text-lg font-headline font-extrabold text-primary">--%</p>
+                            <p id="conf-high-count" class="text-[9px] text-on-surface/30">0 calls</p>
+                        </div>
+                        <div class="bg-surface-container p-3 rounded-lg border border-outline-variant/5">
+                            <p class="text-[9px] text-on-surface-variant uppercase font-bold">MEDIUM Confidence</p>
+                            <p id="conf-medium-rate" class="text-lg font-headline font-extrabold text-secondary">--%</p>
+                            <p id="conf-medium-count" class="text-[9px] text-on-surface/30">0 calls</p>
+                        </div>
+                        <div class="bg-surface-container p-3 rounded-lg border border-outline-variant/5">
+                            <p class="text-[9px] text-on-surface-variant uppercase font-bold">LOW Confidence</p>
+                            <p id="conf-low-rate" class="text-lg font-headline font-extrabold text-on-surface/60">--%</p>
+                            <p id="conf-low-count" class="text-[9px] text-on-surface/30">0 calls</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Ledger Table Section -->
+            <section class="bg-surface-container-high rounded-xl p-6 border border-outline-variant/10 space-y-4">
+                <!-- Search & Filters -->
+                <div class="flex flex-col md:flex-row gap-3 justify-between items-center">
+                    <div class="relative w-full md:w-80">
+                        <span class="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-sm">search</span>
+                        <input id="rec-search" type="text" oninput="applyFilters()" placeholder="Filter by ticker or reason..." class="w-full bg-surface-container-low border border-outline-variant/20 rounded-xl text-xs pl-9 pr-4 py-2 focus:ring-1 focus:ring-primary/50 text-on-surface placeholder-on-surface-variant/40 outline-none"/>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 w-full md:w-auto">
+                        <button onclick="filterType('ALL')" id="filter-btn-ALL" class="px-3 py-1.5 bg-primary text-on-primary text-[10px] font-bold rounded-lg transition-colors">All</button>
+                        <button onclick="filterType('BUY_ADD')" id="filter-btn-BUY_ADD" class="px-3 py-1.5 bg-surface-container-low hover:bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded-lg transition-colors">Buy/Add</button>
+                        <button onclick="filterType('SELL_TRIM')" id="filter-btn-SELL_TRIM" class="px-3 py-1.5 bg-surface-container-low hover:bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded-lg transition-colors">Sell/Trim</button>
+                        <button onclick="filterType('HOLD')" id="filter-btn-HOLD" class="px-3 py-1.5 bg-surface-container-low hover:bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded-lg transition-colors">Hold</button>
+                        <button onclick="filterType('CLOSED')" id="filter-btn-CLOSED" class="px-3 py-1.5 bg-surface-container-low hover:bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded-lg transition-colors">Superseded</button>
+                    </div>
+                </div>
+
+                <!-- Scrollable Table -->
+                <div class="overflow-x-auto custom-scrollbar">
+                    <table class="w-full text-left border-collapse min-w-[900px]">
+                        <thead>
+                            <tr class="border-b border-outline-variant/10">
+                                <th class="pb-3 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Date</th>
+                                <th class="pb-3 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Ticker</th>
+                                <th class="pb-3 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Action</th>
+                                <th class="pb-3 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Advice Price</th>
+                                <th class="pb-3 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Conf / Horizon</th>
+                                <th class="pb-3 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Stated Reason</th>
+                                <th class="pb-3 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Returns (2w / 1m / 3m vs SPY)</th>
+                                <th class="pb-3 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant text-right">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rec-table-body" class="divide-y divide-outline-variant/5 text-xs">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div id="no-recs-message" class="hidden py-12 text-center text-on-surface-variant/40 italic">
+                    No recommendations match the selected filters.
+                </div>
+            </section>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let rawRecommendations = [];
+    let currentFilter = 'ALL';
+
+    async function fetchRecommendations() {
+        document.getElementById('ledger-loading').classList.remove('hidden');
+        document.getElementById('ledger-error').classList.add('hidden');
+        document.getElementById('ledger-content').classList.add('hidden');
+
+        try {
+            const response = await fetch('/api/recommendations');
+            if (!response.ok) throw new Error('API return not ok');
+            const data = await response.json();
+
+            // Populate Overview Stats
+            populateOverviewStats(data.stats, data.confidence_stats);
+
+            // Save recommendations list
+            rawRecommendations = data.recommendations || [];
+
+            // Render table
+            renderTable();
+
+            document.getElementById('ledger-loading').classList.add('hidden');
+            document.getElementById('ledger-content').classList.remove('hidden');
+        } catch (e) {
+            console.error('Failed to load recommendations:', e);
+            document.getElementById('ledger-loading').classList.add('hidden');
+            document.getElementById('ledger-error').classList.remove('hidden');
+        }
+    }
+
+    function populateOverviewStats(stats, confStats) {
+        // 2w
+        document.getElementById('stat-2w-hitrate').innerText = stats['2w'].total > 0 ? stats['2w'].hit_rate + '%' : '0.0%';
+        document.getElementById('stat-2w-alpha').innerText = (stats['2w'].avg_alpha >= 0 ? '+' : '') + stats['2w'].avg_alpha + '% Alpha';
+        document.getElementById('stat-2w-alpha').className = `text-xs font-bold ${stats['2w'].avg_alpha >= 0 ? 'text-primary' : 'text-error'}`;
+        document.getElementById('stat-2w-count').innerText = `${stats['2w'].total} calls scored`;
+
+        // 1m
+        document.getElementById('stat-1m-hitrate').innerText = stats['1m'].total > 0 ? stats['1m'].hit_rate + '%' : '0.0%';
+        document.getElementById('stat-1m-alpha').innerText = (stats['1m'].avg_alpha >= 0 ? '+' : '') + stats['1m'].avg_alpha + '% Alpha';
+        document.getElementById('stat-1m-alpha').className = `text-xs font-bold ${stats['1m'].avg_alpha >= 0 ? 'text-primary' : 'text-error'}`;
+        document.getElementById('stat-1m-count').innerText = `${stats['1m'].total} calls scored`;
+
+        // 3m
+        document.getElementById('stat-3m-hitrate').innerText = stats['3m'].total > 0 ? stats['3m'].hit_rate + '%' : '0.0%';
+        document.getElementById('stat-3m-alpha').innerText = (stats['3m'].avg_alpha >= 0 ? '+' : '') + stats['3m'].avg_alpha + '% Alpha';
+        document.getElementById('stat-3m-alpha').className = `text-xs font-bold ${stats['3m'].avg_alpha >= 0 ? 'text-primary' : 'text-error'}`;
+        document.getElementById('stat-3m-count').innerText = `${stats['3m'].total} calls scored`;
+
+        // Confidence stats
+        document.getElementById('conf-high-rate').innerText = confStats['HIGH'].total > 0 ? confStats['HIGH'].hit_rate + '%' : '--';
+        document.getElementById('conf-high-count').innerText = `${confStats['HIGH'].total} calls`;
+
+        document.getElementById('conf-medium-rate').innerText = confStats['MEDIUM'].total > 0 ? confStats['MEDIUM'].hit_rate + '%' : '--';
+        document.getElementById('conf-medium-count').innerText = `${confStats['MEDIUM'].total} calls`;
+
+        document.getElementById('conf-low-rate').innerText = confStats['LOW'].total > 0 ? confStats['LOW'].hit_rate + '%' : '--';
+        document.getElementById('conf-low-count').innerText = `${confStats['LOW'].total} calls`;
+    }
+
+    function renderTable() {
+        const body = document.getElementById('rec-table-body');
+        body.innerHTML = '';
+
+        const searchQuery = document.getElementById('rec-search').value.toLowerCase().trim();
+
+        // Sort: newest first
+        const sortedRecs = [...rawRecommendations].reverse();
+
+        let visibleCount = 0;
+
+        sortedRecs.forEach(rec => {
+            const ticker = (rec.ticker || '').toUpperCase();
+            const action = (rec.action || '').toUpperCase();
+            const superseded = !!rec.superseded;
+            const reason = (rec.reason || '').toLowerCase();
+
+            // Search filter
+            if (searchQuery && !ticker.includes(searchQuery) && !reason.includes(searchQuery)) {
+                return;
+            }
+
+            // Tab filter
+            if (currentFilter === 'BUY_ADD' && action !== 'BUY' && action !== 'ADD') return;
+            if (currentFilter === 'SELL_TRIM' && action !== 'SELL' && action !== 'TRIM') return;
+            if (currentFilter === 'HOLD' && action !== 'HOLD') return;
+            if (currentFilter === 'CLOSED' && !superseded) return;
+            if (currentFilter !== 'CLOSED' && superseded && currentFilter !== 'ALL') return;
+
+            visibleCount++;
+
+            // Create action badge
+            let actionBadgeClass = '';
+            if (action === 'BUY' || action === 'ADD') {
+                actionBadgeClass = 'bg-primary-container text-primary border-primary/20';
+            } else if (action === 'SELL' || action === 'TRIM') {
+                actionBadgeClass = 'bg-error-container/20 text-error border-error/20';
+            } else {
+                actionBadgeClass = 'bg-surface-container-highest text-secondary border-outline-variant/20';
+            }
+
+            // Create scores elements
+            const scores = rec.scores || {};
+            let performanceHtml = '<div class="flex flex-wrap gap-2">';
+
+            ['2w', '1m', '3m'].forEach(horizon => {
+                if (superseded) {
+                    performanceHtml += `<span class="px-2 py-0.5 bg-surface-container text-on-surface-variant/30 text-[9px] rounded font-medium">${horizon}: —</span>`;
+                } else if (horizon in scores) {
+                    const s = scores[horizon];
+                    const alpha = s.alpha;
+                    const isLong = ['BUY', 'ADD', 'HOLD'].includes(action);
+                    const isHit = isLong ? (alpha > 0) : (alpha < 0);
+                    const indicatorColor = isHit ? 'text-primary' : 'text-error';
+                    performanceHtml += `
+                        <span class="px-2 py-0.5 bg-surface-container-low border border-outline-variant/10 text-[9px] rounded font-medium flex items-center gap-1 select-none font-headline">
+                            <span class="text-on-surface/60">${horizon}:</span>
+                            <span class="${indicatorColor} font-bold">${(s.perf >= 0 ? '+' : '') + s.perf.toFixed(1)}%</span>
+                            <span class="text-on-surface-variant/50">(${(alpha >= 0 ? '+' : '') + alpha.toFixed(1)}% vs SPY)</span>
+                        </span>
+                    `;
+                } else {
+                    performanceHtml += `<span class="px-2 py-0.5 bg-surface-container text-on-surface-variant/40 text-[9px] rounded font-medium select-none">${horizon}: pending</span>`;
+                }
+            });
+            performanceHtml += '</div>';
+
+            const dateStr = rec.date || 'Unknown';
+            const priceStr = rec.price_at_advice ? `$${rec.price_at_advice.toFixed(2)}` : 'N/A';
+            const confidence = rec.confidence_grade || 'MEDIUM';
+            const horizonStr = rec.horizon || 'Medium Term';
+            const recReason = rec.reason || '';
+
+            // Status label
+            let statusHtml = '';
+            if (superseded) {
+                const superDate = rec.superseded_by && rec.superseded_by.date ? rec.superseded_by.date : '';
+                const superAction = rec.superseded_by && rec.superseded_by.action ? rec.superseded_by.action : 'REVERSAL';
+                statusHtml = `
+                    <div class="text-right">
+                        <span class="px-2 py-0.5 bg-error-container/10 text-error/70 text-[9px] rounded border border-error/10 uppercase tracking-widest font-black select-none font-headline">Superseded</span>
+                        <p class="text-[8px] text-on-surface-variant/40 mt-1 font-headline">Closed by ${superAction} ${superDate}</p>
+                    </div>
+                `;
+            } else {
+                statusHtml = `
+                    <div class="text-right">
+                        <span class="px-2 py-0.5 bg-primary-container text-primary text-[9px] rounded border border-primary/10 uppercase tracking-widest font-black select-none font-headline">Active</span>
+                    </div>
+                `;
+            }
+
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-surface-container-high/20 transition-colors';
+            row.innerHTML = `
+                <td class="py-4 font-medium text-on-surface-variant whitespace-nowrap">${dateStr}</td>
+                <td class="py-4 font-bold text-on-surface tracking-wide">${ticker}</td>
+                <td class="py-4">
+                    <span class="px-2 py-0.5 rounded-lg border text-[10px] font-bold ${actionBadgeClass}">${action}</span>
+                </td>
+                <td class="py-4 font-mono text-on-surface-variant">${priceStr}</td>
+                <td class="py-4">
+                    <div class="flex flex-col">
+                        <span class="font-bold text-[10px] text-on-surface/80">${confidence}</span>
+                        <span class="text-[9px] text-on-surface-variant/50">${horizonStr}</span>
+                    </div>
+                </td>
+                <td class="py-4 max-w-xs text-on-surface-variant pr-4 break-words" title="${recReason.replace(/"/g, '&quot;')}">${recReason}</td>
+                <td class="py-4">${performanceHtml}</td>
+                <td class="py-4 whitespace-nowrap">${statusHtml}</td>
+            `;
+            body.appendChild(row);
+        });
+
+        const noRecsMsg = document.getElementById('no-recs-message');
+        if (visibleCount === 0) {
+            noRecsMsg.classList.remove('hidden');
+        } else {
+            noRecsMsg.classList.add('hidden');
+        }
+    }
+
+    function filterType(type) {
+        // Reset active filter button style
+        const buttons = ['ALL', 'BUY_ADD', 'SELL_TRIM', 'HOLD', 'CLOSED'];
+        buttons.forEach(btn => {
+            const el = document.getElementById(`filter-btn-${btn}`);
+            if (btn === type) {
+                el.className = 'px-3 py-1.5 bg-primary text-on-primary text-[10px] font-bold rounded-lg transition-colors';
+            } else {
+                el.className = 'px-3 py-1.5 bg-surface-container-low hover:bg-surface-container-highest text-on-surface-variant text-[10px] font-bold rounded-lg transition-colors';
+            }
+        });
+
+        currentFilter = type;
+        renderTable();
+    }
+
+    function applyFilters() {
+        renderTable();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        fetchRecommendations();
+    });
+</script>
+{% endblock %}

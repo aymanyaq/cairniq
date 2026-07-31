@@ -1,0 +1,28 @@
+# Default: let git auto-detect text files and normalize line endings to LF
+# in the repo, expanding to the platform's native ending on checkout.
+* text=auto
+
+# Windows-native files must keep CRLF on all platforms.
+# cmd.exe and PowerShell handle either, but CRLF is canonical and avoids
+# subtle bugs in older Windows hosts.
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# POSIX shell scripts must keep LF on all platforms.
+# A CRLF in a shebang line ("#!/bin/bash\r") breaks execution on Linux/macOS.
+*.sh        text eol=lf
+*.command   text eol=lf
+
+# Binary files: do not normalize.
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.icns      binary
+*.zip       binary
+*.tar.gz    binary
+*.sqlite    binary
+*.db        binary
+*.pdf       binary

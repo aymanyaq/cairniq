@@ -1,0 +1,630 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    <!-- Unified CairnIQ Header -->
+    <header class="flex justify-between items-center px-8 h-16 w-full bg-[#131b2e] font-['Manrope'] font-bold uppercase tracking-widest border-b border-[#45464d]/15 shrink-0 z-10">
+      <div class="flex items-center gap-6">
+        <span class="text-xl font-extrabold text-[#dae2fd]">CAIRNIQ // MONITOR</span>
+      </div>
+    </header>
+
+    <!-- Content Workspace -->
+    <div class="flex-1 overflow-hidden flex flex-col">
+      <!-- Breadcrumbs & Stats Bar -->
+      <section class="px-6 py-3 flex justify-between items-center bg-[#131b2e]/30 border-b border-outline-variant/5">
+        <div class="flex items-center gap-6">
+          <nav class="flex items-center text-[9px] uppercase tracking-[0.2em] text-on-surface-variant/40 font-bold">
+            <span class="hover:text-primary transition-colors cursor-pointer">READ</span>
+            <span class="mx-2 material-symbols-outlined text-[10px]" data-icon="chevron_right">chevron_right</span>
+            <span class="text-primary/60">HOLDINGS_MONITOR</span>
+          </nav>
+          <div class="h-4 w-px bg-outline-variant/10"></div>
+          <div class="flex items-center gap-4 text-[10px] font-mono">
+            <div class="flex items-center gap-2">
+              <span class="text-on-surface-variant/40">MV:</span>
+              <span class="text-primary font-bold">{{ total_value_cad }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-on-surface-variant/40">RETURN:</span>
+              <span class="text-secondary font-bold">{{ percent_return }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <a href="/portfolio" class="flex items-center gap-2 px-4 py-2 rounded-xl border border-outline-variant/10 text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant/60 hover:text-primary hover:border-primary/20 transition-colors">
+            <span class="material-symbols-outlined text-sm" data-icon="edit_note">edit_note</span>
+            Edit Holdings
+          </a>
+        </div>
+      </section>
+
+      <section class="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
+
+        <!-- This page reads; it never writes. Everything below is derived from
+             the holdings you keep on /portfolio, and nothing here can change
+             them — which is the whole reason these two panels moved off the
+             editor. They answer a daily question ("what is happening to what I
+             hold") next to a grid you touch monthly, and every visit to fix a
+             share count was paying for their fetches.
+
+             Position Reconciliation stayed behind on /portfolio deliberately:
+             it has a cause dropdown that POSTs, so it is book maintenance, not
+             monitoring. -->
+
+        <!-- Fund Flows (5.5) — read surface for GET /api/portfolio/fund-flows.
+
+             `source_change` exists because FMP and Yahoo disagree about SPY's
+             share count by roughly 15%. Differencing one against the other
+             reports a DEFINITIONAL GAP as a creation event — a made-up billion-
+             dollar inflow that looks exactly like a real one. So a row whose two
+             points came from different sources shows NO number at all.
+
+             The other rule: `accruing` is not zero flow. A fund recorded once is
+             a fund we cannot yet measure, and rendering that as 0 / "flat" /
+             "unchanged" would state the opposite of what is known. Non-ready
+             rows carry an em dash in the flow column, never a figure. -->
+        <div class="bg-[#131b2e]/40 rounded-2xl overflow-hidden border border-outline-variant/10 shadow-2xl">
+          <div class="px-8 py-5 border-b border-outline-variant/10 flex items-start justify-between gap-6">
+            <div>
+              <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-primary/80 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm" data-icon="swap_vert">swap_vert</span>
+                Fund Flows
+              </h2>
+              <p class="text-[10px] text-on-surface-variant/40 mt-1.5 max-w-3xl leading-relaxed normal-case tracking-normal">
+                Week-over-week creations and redemptions for the funds you hold, from recorded shares outstanding. A fund with no number yet has no number &mdash; it is not flat.
+              </p>
+            </div>
+            <div id="flows-coverage" class="text-right shrink-0 font-mono text-[10px] text-on-surface-variant/40">&nbsp;</div>
+          </div>
+          <div id="flows-body" class="px-8 py-6">
+            <p class="text-[10px] font-mono text-on-surface-variant/40 italic">Loading fund flows&hellip;</p>
+          </div>
+        </div>
+
+        <!-- Event Radar (3.5b) — read surface for GET /api/portfolio/event-radar.
+
+             The rule this engine is built around, from its own docstring: "no
+             earnings coming" and "the provider did not tell us" are different
+             facts and only one of them is safe to act on. `unknown` carries the
+             second kind. An empty calendar drawn while `unknown` is non-empty
+             would report silence about names nobody actually checked, so the
+             empty state below branches on `unknown` before it says "clear".
+
+             The second rule is subtler and concerns the countdown. This panel
+             reads the CACHED radar (6h TTL); the alert path calls
+             build_event_radar() directly, precisely because a stale days_until
+             changes the answer rather than aging it. So the panel may mark a
+             row as inside the T-3/T-1 window but must never state that an alert
+             HAS fired or WILL fire — it is not reading the alert store. -->
+        <div class="mt-6 bg-[#131b2e]/40 rounded-2xl overflow-hidden border border-outline-variant/10 shadow-2xl">
+          <div class="px-8 py-5 border-b border-outline-variant/10 flex items-start justify-between gap-6">
+            <div>
+              <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-primary/80 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm" data-icon="radar">radar</span>
+                Event Radar
+              </h2>
+              <p class="text-[10px] text-on-surface-variant/40 mt-1.5 max-w-3xl leading-relaxed normal-case tracking-normal">
+                Earnings, ex-dividend and FOMC dates for the names you hold, nearest first. A name the provider could not answer for is listed separately &mdash; it is not a clear calendar.
+              </p>
+            </div>
+            <div id="radar-coverage" class="text-right shrink-0 font-mono text-[10px] text-on-surface-variant/40">&nbsp;</div>
+          </div>
+          <div id="radar-body" class="px-8 py-6">
+            <p class="text-[10px] font-mono text-on-surface-variant/40 italic">Loading event radar&hellip;</p>
+          </div>
+        </div>
+
+        <!-- Asset Location (4.7) — read surface for GET /api/portfolio/asset-location.
+             The last of the three API-available/UI-pending panels the roadmap
+             listed; the other two are above.
+
+             The rule this panel is built around is a defect this engine already
+             shipped: TFSA, Roth and ISA went into one TAX_FREE bucket and all
+             three were charged the Canadian TFSA treatment, which invented a 15%
+             withholding leak on a US user's Roth and then recommended a swap to
+             fix it. The engine now SKIPS a jurisdiction it does not cover — so
+             the score is computed over a subset, and a high score across accounts
+             nobody could place means "not checked", not "efficient". Coverage is
+             therefore rendered NEXT TO the score and never underneath it.
+
+             `uncovered_accounts` and `skipped_checks` are the two fields that say
+             which. They are not a footnote here; if either is non-empty the
+             score carries a visible caveat. -->
+        <div class="mt-6 bg-[#131b2e]/40 rounded-2xl overflow-hidden border border-outline-variant/10 shadow-2xl">
+          <div class="px-8 py-5 border-b border-outline-variant/10 flex items-start justify-between gap-6">
+            <div>
+              <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-primary/80 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm" data-icon="account_balance_wallet">account_balance_wallet</span>
+                Asset Location
+              </h2>
+              <p class="text-[10px] text-on-surface-variant/40 mt-1.5 max-w-3xl leading-relaxed normal-case tracking-normal">
+                Whether each holding sits in the account that taxes it least. Rules are per jurisdiction and an account that names no country is skipped, not guessed &mdash; a skipped account cannot raise or lower the score.
+              </p>
+            </div>
+            <div id="location-coverage" class="text-right shrink-0 font-mono text-[10px] text-on-surface-variant/40">&nbsp;</div>
+          </div>
+          <div id="location-body" class="px-8 py-6">
+            <p class="text-[10px] font-mono text-on-surface-variant/40 italic">Loading asset location&hellip;</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Status Bar -->
+    <footer class="h-8 px-8 bg-surface-container-lowest border-t border-outline-variant/10 flex items-center justify-between text-[9px] uppercase tracking-[0.2em] font-semibold text-on-surface-variant/40">
+      <div class="flex items-center space-x-4">
+        <span>SYSTEM STATUS: OPERATIONAL</span>
+        {% if is_stale %}
+          <span class="flex items-center text-error" title="Live sync failed — the holdings these panels read come from the last known good snapshot">
+            <span class="w-1 h-1 rounded-full bg-error mr-1.5"></span> STALE SNAPSHOT
+          </span>
+        {% else %}
+          <span class="flex items-center"><span class="w-1 h-1 rounded-full bg-primary mr-1.5"></span> SYNCED</span>
+        {% endif %}
+      </div>
+      <div title="The universe these panels read is taken from a cached portfolio snapshot, not a live tick stream.">
+        HOLDINGS AS OF: {{ last_sync_display }}
+      </div>
+    </footer>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/engine_panel.js?v={{ app_version }}"></script>
+<script>
+  // ── 5.5: fund flows ───────────────────────────────────────────────────
+  // Four statuses from tools/fund_flows.get_flow_series, and only ONE of them
+  // may show a number. The three that may not are each a different reason for
+  // silence, and the panel names which one rather than falling back to a shared
+  // blank — that is the same rule 4.10a's panel enforces, applied per ROW
+  // instead of per panel, because these statuses are per fund.
+  const FLOW_STATES = {
+    ready:         ['Measured',  'text-primary'],
+    accruing:      ['Accruing',  'text-secondary'],
+    source_change: ['Source changed', 'text-[#e0b252]'],
+    no_data:       ['Not recorded',   'text-error']
+  };
+
+  function fmtSharesDelta(v) {
+    const n = Number(v);
+    if (v === null || v === undefined || !isFinite(n)) return '—';
+    const s = Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
+    return (n > 0 ? '+' : (n < 0 ? '−' : '')) + s;
+  }
+
+  function fmtPct(v) {
+    const n = Number(v);
+    if (v === null || v === undefined || !isFinite(n)) return '—';
+    return (n > 0 ? '+' : (n < 0 ? '−' : '')) + Math.abs(n).toFixed(2) + '%';
+  }
+
+  // The reason a fund cannot be measured, in that fund's own words. The engine
+  // already composed one in `note`; this is the short form for the table cell.
+  function flowReason(s) {
+    if (s.status === 'no_data') return 'No shares-outstanding rows recorded';
+    if (s.status === 'source_change') return 'Two points, two sources — not comparable';
+    if (s.status === 'accruing') {
+      const d = s.days_until_ready;
+      return (d === null || d === undefined)
+        ? 'Needs a second point a week apart'
+        : `Needs ~${d} more day${d === 1 ? '' : 's'}`;
+    }
+    return '';
+  }
+
+  function renderFlowsCoverage(counts, body) {
+    const el = document.getElementById('flows-coverage');
+    if (!el) return;
+    if (!counts.total) { el.innerHTML = '&nbsp;'; return; }
+    let html = `<span class="${counts.ready ? 'text-primary' : 'text-secondary'} font-bold">`
+             + `${counts.ready} of ${counts.total}</span>`
+             + `<span class="text-on-surface-variant/40"> fund${counts.total === 1 ? '' : 's'} measurable</span>`;
+    if (counts.blocked) {
+      html += `<br><span class="text-[#e0b252]/70">${counts.blocked} withheld, not zero</span>`;
+    }
+    el.innerHTML = html;
+  }
+
+  function renderFundFlows(data, body) {
+    const universe = data.universe || {};
+    const series = data.fund_series || {};
+    const symbols = Object.keys(series).sort();
+
+    // "You hold no funds" is a claim about the PORTFOLIO. An unresolved
+    // classification is a claim about the CLASSIFIER. They are not the same
+    // empty panel, and the second one hides holdings.
+    const unresolved = universe.unresolved || [];
+    if (!symbols.length) {
+      renderFlowsCoverage({ total: 0 }, body);
+      body.innerHTML = unresolved.length
+        ? engineNotice('warn', 'No fund could be classified',
+            `${unresolved.length} holding(s) could not be resolved as fund or non-fund (${unresolved.join(', ')}), so none entered the recording universe. This is a gap in classification, not a portfolio without funds.`)
+        : engineNotice('ok', 'No fund holdings',
+            'No ETF or mutual-fund positions were found for this profile, so there is no share-creation series to record.');
+      return;
+    }
+
+    const counts = { total: symbols.length, ready: 0, blocked: 0, recording: 0, absent: 0 };
+    symbols.forEach(s => {
+      const st = (series[s] || {}).status;
+      if (st === 'ready') counts.ready += 1; else counts.blocked += 1;
+      // "Recording but not yet differenceable" and "nothing on file at all" are
+      // different claims about the RECORDER, and the panel-wide banner used to
+      // assert the first about funds in the second state. A fund with zero
+      // points is not recording; saying it is hides a dead feed behind a
+      // reassuring wait message.
+      if (st === 'no_data') counts.absent += 1; else counts.recording += 1;
+    });
+    renderFlowsCoverage(counts, body);
+
+    let html = '';
+    if (!counts.ready) {
+      const parts = [];
+      if (counts.recording) {
+        parts.push(`${counts.recording} fund(s) are recording but have no two points far enough apart to difference`);
+      }
+      if (counts.absent) {
+        parts.push(`${counts.absent} have nothing on file at all — either the recorder has not run since they were added, or the source cannot answer for those listings`);
+      }
+      html += engineNotice('waiting', 'No fund has a week-over-week flow yet',
+        `${parts.join('; ')}. No flow number is being reported for any of them — this is an accruing series, not a set of flat ones.`)
+        + '<div class="h-4"></div>';
+    }
+
+    html += `<div class="overflow-x-auto"><table class="w-full text-left border-collapse min-w-[860px]">
+      <thead><tr class="text-[9px] uppercase tracking-[0.2em] text-primary/60 font-black border-b border-outline-variant/10">
+        <th class="py-2 pr-4">Fund</th>
+        <th class="py-2 pr-4">State</th>
+        <th class="py-2 pr-4 text-right">Points</th>
+        <th class="py-2 pr-4 text-right">Latest shares</th>
+        <th class="py-2 pr-4 text-right">Share change</th>
+        <th class="py-2 pr-4 text-right">%</th>
+        <th class="py-2 pr-4">Window</th>
+      </tr></thead><tbody>`;
+
+    symbols.forEach(sym => {
+      const s = series[sym] || {};
+      const state = FLOW_STATES[s.status] || [s.status || 'unknown', 'text-on-surface-variant'];
+      const ready = s.status === 'ready' && s.wow;
+      const wow = ready ? s.wow : null;
+
+      // The load-bearing branch. Anything that is not `ready` gets an em dash in
+      // BOTH numeric columns — never a 0, never "flat", never "unchanged".
+      const delta = ready ? fmtSharesDelta(wow.shares_change) : '—';
+      const pct = ready ? fmtPct(wow.percent_change) : '—';
+      const dirCls = ready
+        ? (wow.shares_change > 0 ? 'text-primary' : (wow.shares_change < 0 ? 'text-error' : 'text-on-surface-variant/60'))
+        : 'text-on-surface-variant/30';
+
+      let window = '';
+      if (ready) {
+        window = `<span class="text-on-surface-variant/50">${esc(wow.from_date)} &rarr; ${esc(wow.to_date)}</span>`;
+        if (wow.stale_window) {
+          window += `<br><span class="text-[#e0b252]/70">${wow.gap_days}d — wider than a week</span>`;
+        }
+      } else {
+        window = `<span class="text-on-surface-variant/40">${esc(flowReason(s))}</span>`;
+      }
+
+      html += `<tr class="border-b border-outline-variant/5 text-[11px] font-mono">
+        <td class="py-2.5 pr-4 text-on-surface font-bold">${esc(sym)}</td>
+        <td class="py-2.5 pr-4 ${state[1]} font-bold whitespace-nowrap">${esc(state[0])}</td>
+        <td class="py-2.5 pr-4 text-right text-on-surface-variant/60">${s.days_recorded === null || s.days_recorded === undefined ? '—' : esc(s.days_recorded)}</td>
+        <td class="py-2.5 pr-4 text-right text-on-surface-variant/60">${fmtShares(s.latest_shares)}</td>
+        <td class="py-2.5 pr-4 text-right ${dirCls} font-bold">${delta}</td>
+        <td class="py-2.5 pr-4 text-right ${dirCls}">${pct}</td>
+        <td class="py-2.5 pr-4 text-[10px]">${window}</td>
+      </tr>`;
+    });
+
+    html += '</tbody></table></div>';
+
+    // A source change is the one state that can put a fabricated number on
+    // screen if anyone ever "fixes" the blank, so it gets its own explanation
+    // below the table rather than only a badge inside it.
+    const changed = symbols.filter(s => (series[s] || {}).status === 'source_change');
+    if (changed.length) {
+      html += '<div class="h-4"></div>' + engineNotice('warn', 'A source change is not a flow',
+        `${changed.join(', ')}: the two comparable points came from different providers, which disagree about share counts by as much as 15%. Differencing them would report that definitional gap as a creation or redemption. Re-base the series on one source before reading a number.`);
+    }
+
+    if (unresolved.length) {
+      html += `<p class="text-[10px] text-[#e0b252]/70 mt-4 font-mono">${unresolved.length} holding(s) unresolved and excluded from the universe: ${esc(unresolved.join(', '))}</p>`;
+    }
+    body.innerHTML = html;
+  }
+
+  // ── 3.5b: event radar ─────────────────────────────────────────────────
+  const RADAR_KINDS = {
+    earnings:    ['Earnings',     'text-[#e0b252]', 'trending_up'],
+    ex_dividend: ['Ex-dividend',  'text-primary',   'payments'],
+    fomc:        ['FOMC',         'text-secondary', 'account_balance']
+  };
+
+  // The offsets tools/event_radar.py fires on. Mirrored here to MARK a row as
+  // being inside the window — never to claim an alert was sent. This panel does
+  // not read the alert store, and the alert path does not read this cache.
+  const RADAR_ALERT_OFFSETS = { earnings: [3, 1], fomc: [3, 1], ex_dividend: [1] };
+
+  function inAlertWindow(ev) {
+    return (RADAR_ALERT_OFFSETS[ev.kind] || []).includes(ev.days_until);
+  }
+
+  function fmtCountdown(days) {
+    const n = Number(days);
+    if (!isFinite(n)) return '—';
+    if (n === 0) return 'Today';
+    if (n === 1) return 'Tomorrow';
+    return `${n} days`;
+  }
+
+  // `as_of` is the BUILD time, not the read time (5.8). A cached radar keeps
+  // reporting its true age, so the header can say how old the answer is instead
+  // of implying it was just computed.
+  function fmtAge(asOf) {
+    if (!asOf) return '';
+    const built = new Date(asOf);
+    if (isNaN(built.getTime())) return '';
+    const mins = Math.floor((Date.now() - built.getTime()) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    return hrs < 24 ? `${hrs}h ago` : `${Math.floor(hrs / 24)}d ago`;
+  }
+
+  function renderRadarCoverage(data) {
+    const el = document.getElementById('radar-coverage');
+    if (!el) return;
+    const checked = data.checked || 0;
+    const unknown = (data.unknown || []).length;
+    if (!checked && !unknown) { el.innerHTML = '&nbsp;'; return; }
+    // Answered, not swept. `checked` counts names the sweep VISITED; the ones
+    // in `unknown` were visited and produced nothing, so quoting `checked`
+    // alone would credit the radar with coverage it does not have.
+    const answered = Math.max(0, checked - unknown);
+    let html = `<span class="${unknown ? 'text-[#e0b252]' : 'text-primary'} font-bold">`
+             + `${answered} of ${checked}</span>`
+             + `<span class="text-on-surface-variant/40"> name${checked === 1 ? '' : 's'} answered</span>`;
+    if (unknown) {
+      html += `<br><span class="text-[#e0b252]/70">${unknown} with no date available</span>`;
+    }
+    const age = fmtAge(data.as_of);
+    if (age) html += `<br><span class="text-on-surface-variant/30">built ${esc(age)}</span>`;
+    el.innerHTML = html;
+  }
+
+  // `unknown` is narrower than it looks, and the demo book proved it on the
+  // first live read. build_event_radar appends to it when a name's EARNINGS
+  // date cannot be established — then goes on to check ex-dividend regardless.
+  // So a name can be in `unknown` AND have a row below (MSFT: no earnings date,
+  // ex-div on file). The first wording here said "no row below covers them",
+  // which was false for exactly that name.
+  function radarUnknownNotice(unknown, events) {
+    const withRows = new Set((events || []).map(e => e.symbol).filter(Boolean));
+    const alsoListed = unknown.filter(s => withRows.has(s));
+    let detail = `${unknown.join(', ')}. The provider did not answer with an earnings date for these names — that is not the same as having nothing scheduled.`;
+    if (alsoListed.length) {
+      detail += ` ${alsoListed.join(', ')} appear${alsoListed.length === 1 ? 's' : ''} below for a different event kind; that row says nothing about their earnings.`;
+    }
+    return engineNotice('warn', `${unknown.length} holding(s) returned no earnings date`, detail);
+  }
+
+  function renderEventRadar(data, body) {
+    renderRadarCoverage(data);
+
+    const events = data.events || [];
+    const unknown = data.unknown || [];
+
+    if (!events.length) {
+      // An empty calendar is only a real "all clear" when every name answered.
+      body.innerHTML = unknown.length
+        ? radarUnknownNotice(unknown, events)
+        : engineNotice('ok', 'No dated events ahead',
+            `All ${data.checked || 0} held name(s) answered, and none has an earnings date, ex-dividend date or FOMC meeting on file. This is a clear calendar, not a missing one.`);
+      return;
+    }
+
+    let html = '';
+    if (unknown.length) {
+      html += radarUnknownNotice(unknown, events) + '<div class="h-4"></div>';
+    }
+
+    html += `<div class="overflow-x-auto"><table class="w-full text-left border-collapse min-w-[860px]">
+      <thead><tr class="text-[9px] uppercase tracking-[0.2em] text-primary/60 font-black border-b border-outline-variant/10">
+        <th class="py-2 pr-4">Kind</th>
+        <th class="py-2 pr-4">Name</th>
+        <th class="py-2 pr-4">Date</th>
+        <th class="py-2 pr-4 text-right">Countdown</th>
+        <th class="py-2 pr-4">What it is</th>
+      </tr></thead><tbody>`;
+
+    events.forEach(ev => {
+      const kind = RADAR_KINDS[ev.kind] || [ev.kind, 'text-on-surface-variant', 'event'];
+      const near = inAlertWindow(ev);
+      // "In the alert window" — a statement about the CALENDAR, not about
+      // delivery. Wording that implies a notification was sent would be a claim
+      // about a store this panel never reads.
+      const flag = near
+        ? `<span class="ml-2 px-1.5 py-0.5 rounded bg-[#e0b252]/10 border border-[#e0b252]/20 text-[8px] uppercase tracking-[0.15em] text-[#e0b252]/80 font-bold">In alert window</span>`
+        : '';
+      html += `<tr class="border-b border-outline-variant/5 text-[11px] font-mono">
+        <td class="py-2.5 pr-4 ${kind[1]} font-bold whitespace-nowrap">
+          <span class="material-symbols-outlined text-[13px] align-middle mr-1" data-icon="${kind[2]}">${kind[2]}</span>${esc(kind[0])}</td>
+        <td class="py-2.5 pr-4 text-on-surface font-bold">${esc(ev.symbol || 'Markets')}</td>
+        <td class="py-2.5 pr-4 text-on-surface-variant/60">${esc(ev.date)}</td>
+        <td class="py-2.5 pr-4 text-right ${near ? 'text-[#e0b252]' : 'text-on-surface-variant/60'} font-bold whitespace-nowrap">${esc(fmtCountdown(ev.days_until))}</td>
+        <td class="py-2.5 pr-4 text-on-surface-variant/50 text-[10px]">${esc(ev.label)}${flag}</td>
+      </tr>`;
+    });
+
+    html += '</tbody></table></div>';
+    html += `<p class="text-[10px] text-on-surface-variant/40 mt-4 leading-relaxed max-w-4xl">`
+          + `Countdowns come from the cached radar and can be up to six hours old. Alert delivery runs off a fresh build, so this panel shows what is scheduled &mdash; not what has been sent.</p>`;
+    body.innerHTML = html;
+  }
+
+  // ── 4.7: asset location ───────────────────────────────────────────────
+  const SHELTER_LABELS = {
+    TAX_FREE:      ['Tax-free',     'text-primary'],
+    TAX_DEFERRED:  ['Tax-deferred', 'text-secondary'],
+    TAXABLE:       ['Taxable',      'text-on-surface-variant/60'],
+    NON_REGISTERED:['Taxable',      'text-on-surface-variant/60']
+  };
+
+  function scoreClass(score) {
+    if (score >= 90) return 'text-primary';
+    if (score >= 75) return 'text-secondary';
+    if (score >= 60) return 'text-[#e0b252]';
+    return 'text-error';
+  }
+
+  // Coverage BESIDE the score, never below it. The engine skips accounts whose
+  // jurisdiction it cannot place, so the headline number is computed over a
+  // subset — and a 96 across two skipped accounts is "mostly unchecked", not
+  // "nearly optimal". This is the same class of error as a span standing in for
+  // coverage, one surface over.
+  function renderLocationCoverage(data) {
+    const el = document.getElementById('location-coverage');
+    if (!el) return;
+    const covered = data.jurisdictions_covered || [];
+    const uncovered = data.uncovered_accounts || [];
+    const accounts = (data.account_breakdown || []).length;
+    if (!accounts) { el.innerHTML = '&nbsp;'; return; }
+
+    let html = `<span class="${uncovered.length ? 'text-[#e0b252]' : 'text-primary'} font-bold">`
+             + `${accounts - uncovered.length} of ${accounts}</span>`
+             + `<span class="text-on-surface-variant/40"> account${accounts === 1 ? '' : 's'} placed</span>`;
+    if (covered.length) {
+      html += `<br><span class="text-on-surface-variant/30">rules: ${esc(covered.join(', '))}</span>`;
+    }
+    if (data.tax_policy_version) {
+      html += `<br><span class="text-on-surface-variant/30">policy ${esc(data.tax_policy_version)}</span>`;
+    }
+    el.innerHTML = html;
+  }
+
+  function renderAssetLocation(data, body) {
+    // `analyze_asset_location` returns a bare `note` for both "no holdings" and
+    // "no position had a usable value". Neither is a score of anything, and
+    // rendering a 0 for either would be the engine's own failure mode inverted.
+    if (data.error || (data.note && data.overall_score === undefined)) {
+      renderLocationCoverage({});
+      body.innerHTML = engineNotice(data.error ? 'error' : 'waiting',
+        data.error ? 'Portfolio unreadable' : 'Nothing to place',
+        data.error || data.note);
+      return;
+    }
+
+    renderLocationCoverage(data);
+
+    const uncovered = data.uncovered_accounts || [];
+    const skipped = data.skipped_checks || [];
+    const leaks = data.tax_leakages || [];
+    const swaps = data.recommended_swaps || [];
+    const accounts = data.account_breakdown || [];
+
+    let html = `<div class="flex items-baseline gap-4 mb-6">
+        <span class="text-4xl font-black ${scoreClass(data.overall_score)}">${esc(data.overall_score)}</span>
+        <span class="text-[10px] font-mono text-on-surface-variant/50">/ 100 &middot; ${esc(data.rating || '')}</span>
+      </div>`;
+
+    // The caveat rides ABOVE the table, because the number it qualifies is
+    // already on screen by this point.
+    if (uncovered.length) {
+      html += engineNotice('warn', `${uncovered.length} account(s) name no tax jurisdiction`,
+        `${uncovered.join(', ')}. Their holdings are scored on placement rules that do not depend on a country, and every jurisdiction-specific check was SKIPPED. The score above does not mean those accounts are efficient — it means they were not checked. Rename the account for its shelter (RRSP, Roth IRA, ISA) to place it.`)
+        + '<div class="h-4"></div>';
+    }
+
+    html += `<div class="overflow-x-auto"><table class="w-full text-left border-collapse min-w-[720px]">
+      <thead><tr class="text-[9px] uppercase tracking-[0.2em] text-primary/60 font-black border-b border-outline-variant/10">
+        <th class="py-2 pr-4">Account</th>
+        <th class="py-2 pr-4">Shelter</th>
+        <th class="py-2 pr-4">Jurisdiction</th>
+        <th class="py-2 pr-4 text-right">Positions</th>
+        <th class="py-2 pr-4 text-right">Value</th>
+        <th class="py-2 pr-4 text-right">Score</th>
+      </tr></thead><tbody>`;
+
+    accounts.slice().sort((a, b) => (b.value_base || 0) - (a.value_base || 0)).forEach(a => {
+      const shelter = SHELTER_LABELS[a.account_type] || [a.account_type, 'text-on-surface-variant'];
+      // Three states, and the middle one is why the first live read of this
+      // panel disagreed with its own header. A TAXABLE account with no
+      // jurisdiction is not unplaced: income taxed at the marginal rate is
+      // taxed at the marginal rate wherever you live, so those rules need no
+      // country and the engine's `uncovered_accounts` correctly excludes it.
+      // Printing "not placed" on all three no-jurisdiction rows made the table
+      // say 1 of 4 while the header said 3 of 4 — the same figure counted two
+      // ways on one screen.
+      const isTaxable = a.account_type === 'TAXABLE' || a.account_type === 'NON_REGISTERED';
+      const juris = a.jurisdiction
+        ? `<span class="text-on-surface-variant/60">${esc(a.jurisdiction)}</span>`
+        : (isTaxable
+            ? `<span class="text-on-surface-variant/30" title="Taxable-account rules do not depend on a country">not needed</span>`
+            : `<span class="text-[#e0b252]/70">— not placed</span>`);
+      html += `<tr class="border-b border-outline-variant/5 text-[11px] font-mono">
+        <td class="py-2.5 pr-4 text-on-surface font-bold">${esc(a.account)}</td>
+        <td class="py-2.5 pr-4 ${shelter[1]} font-bold whitespace-nowrap">${esc(shelter[0])}</td>
+        <td class="py-2.5 pr-4">${juris}</td>
+        <td class="py-2.5 pr-4 text-right text-on-surface-variant/60">${esc(a.positions_count)}</td>
+        <td class="py-2.5 pr-4 text-right text-on-surface-variant/60">${Number(a.value_base || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+        <td class="py-2.5 pr-4 text-right ${scoreClass(a.score)} font-bold">${esc(a.score)}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+
+    if (leaks.length) {
+      html += `<h3 class="text-[9px] uppercase tracking-[0.2em] text-[#e0b252]/70 font-black mt-6 mb-2">Tax drag found</h3><ul class="space-y-1.5">`;
+      leaks.slice(0, 12).forEach(l => {
+        html += `<li class="text-[10px] font-mono text-on-surface-variant/60 leading-relaxed">
+          <span class="text-on-surface font-bold">${esc(l.symbol)}</span>
+          <span class="text-on-surface-variant/40"> in ${esc(l.account)}</span> &mdash; ${esc(l.issue)}</li>`;
+      });
+      html += '</ul>';
+    }
+
+    if (swaps.length) {
+      html += `<h3 class="text-[9px] uppercase tracking-[0.2em] text-primary/60 font-black mt-6 mb-2">Suggested placement swaps</h3><ul class="space-y-2">`;
+      swaps.forEach(s => {
+        html += `<li class="text-[10px] font-mono text-on-surface-variant/60 leading-relaxed">
+          <span class="text-on-surface font-bold">${esc(s.move_out_of.symbol)}</span> &rarr; ${esc(s.move_into.account)},
+          <span class="text-on-surface font-bold">${esc(s.move_into.symbol)}</span> &rarr; ${esc(s.move_out_of.account)}
+          <span class="text-on-surface-variant/40">(${esc(s.jurisdiction)})</span>
+          <br><span class="text-on-surface-variant/40">${esc(s.rationale)}</span></li>`;
+      });
+      html += '</ul>';
+    }
+
+    // A skipped check is not a passed check, and this list is the only place the
+    // difference is visible per position.
+    if (skipped.length) {
+      html += `<h3 class="text-[9px] uppercase tracking-[0.2em] text-on-surface-variant/40 font-black mt-6 mb-2">Checks skipped, not passed</h3><ul class="space-y-1">`;
+      skipped.slice(0, 12).forEach(s => {
+        html += `<li class="text-[10px] font-mono text-on-surface-variant/40 leading-relaxed">
+          ${esc(s.symbol)} in ${esc(s.account)} &mdash; ${esc(s.reason)}</li>`;
+      });
+      if (skipped.length > 12) {
+        html += `<li class="text-[10px] font-mono text-on-surface-variant/30">…and ${skipped.length - 12} more.</li>`;
+      }
+      html += '</ul>';
+    }
+
+    if (!leaks.length && !skipped.length) {
+      html += '<div class="h-4"></div>' + engineNotice('ok', 'No tax drag found',
+        'Every position was checked against the rules for its account’s jurisdiction and none is misplaced.');
+    }
+
+    html += `<p class="text-[10px] text-on-surface-variant/40 mt-6 leading-relaxed max-w-4xl">`
+          + `Jurisdiction comes from the account NAME &mdash; there is no tax-residency field. General information, not tax advice; no jurisdiction module has been reviewed by a tax professional.</p>`;
+
+    body.innerHTML = html;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadEnginePanel('/api/portfolio/fund-flows', 'flows-body', renderFundFlows);
+    loadEnginePanel('/api/portfolio/event-radar', 'radar-body', renderEventRadar);
+    loadEnginePanel('/api/portfolio/asset-location', 'location-body', renderAssetLocation);
+  });
+</script>
+{% endblock %}

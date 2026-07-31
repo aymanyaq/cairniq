@@ -1,0 +1,11 @@
+# CairnIQ — Development Dependencies
+# Tooling for local development. Not needed to run the app.
+#
+# Setup:
+#   pip install -r requirements-dev.txt
+#   pre-commit install   # activates the secret-scanning git hook (.pre-commit-config.yaml)
+pre-commit>=4.6.0
+# Coverage instrumentation for `make test-map` — builds the change->test map that
+# `make test-changed` reads to run only the tests a diff can affect. Runtime tests
+# do not need it; pytest-xdist (for `make test`'s -n auto) lives in requirements.txt.
+pytest-cov>=7.1.0

@@ -1,0 +1,15 @@
+# CairnIQ — Optional Dependencies
+# These packages enhance the experience but are not required for the app to run.
+
+# Dense semantic tool retrieval. If this is unavailable, CairnIQ falls back to
+# BM25 keyword retrieval automatically.
+faiss-cpu>=1.14.2
+
+# Google (Gemini) LLM provider — covers BOTH LLM_PROVIDER=google (AI Studio API
+# key) and LLM_PROVIDER=vertexai (Vertex AI, authenticated with a service-account
+# key pasted in Settings). The vertexai path uses the same class with vertexai=True
+# and google-auth (bundled with this package) for the service-account credentials,
+# so no extra package is needed. The app raises a clear "install langchain-google-genai"
+# error if the provider is selected without it.
+# (Azure OpenAI needs no extra package — langchain-openai covers it.)
+langchain-google-genai>=2.1.0

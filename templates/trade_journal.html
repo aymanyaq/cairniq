@@ -1,0 +1,398 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <!-- Unified CairnIQ Header -->
+    <header class="flex justify-between items-center px-8 h-16 w-full bg-[#131b2e] font-['Manrope'] font-bold uppercase tracking-widest border-b border-[#45464d]/15 shrink-0 z-10">
+      <div class="flex items-center gap-6">
+        <span class="text-xl font-extrabold text-[#dae2fd]">CAIRNIQ // ACTIVE THESES & JOURNAL</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="triggerReconcile()" class="px-4 py-2 bg-surface-container-high hover:bg-surface-bright border border-outline-variant/15 text-xs font-bold text-primary rounded-xl transition-all flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm">sync</span>
+          Reconcile with Portfolio Sync
+        </button>
+      </div>
+    </header>
+
+    <div class="flex-1 overflow-y-auto no-scrollbar p-6 space-y-6">
+        <div class="flex justify-between items-end border-b border-outline-variant/10 pb-4">
+            <div>
+                <h2 class="text-sm font-extrabold text-on-surface uppercase tracking-wider">Active Investment Theses Hub</h2>
+                <p class="text-xs text-on-surface/50 mt-0.5">Strategic asset entry logic, risk rails, and portfolio-synced decision tracking.</p>
+            </div>
+        </div>
+
+        <!-- Bento Grid for Active Thesis Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="thesis-grid">
+            {% for thesis in theses %}
+            <div class="bg-surface-container-high rounded-xl p-6 flex flex-col gap-4 group hover:bg-surface-bright transition-all duration-300 border border-outline-variant/5 relative min-h-[280px]" id="thesis-{{ thesis.id }}">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="{% if thesis.action == 'BUY' %}text-primary{% elif thesis.action == 'SELL' %}text-error{% else %}text-secondary{% endif %} font-headline text-xl font-bold tracking-tight">${{ thesis.symbol }}</span>
+                        <p class="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest mt-1">{{ thesis.name or 'Asset Identity' }}</p>
+                    </div>
+                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="openCloseModal('{{ thesis.symbol }}')" class="p-2 hover:bg-surface-container-highest rounded-lg transition-colors text-on-surface-variant hover:text-primary" title="Close Position & Record Lesson">
+                            <span class="material-symbols-outlined text-lg">check_circle</span>
+                        </button>
+                        <button onclick="deleteThesis('{{ thesis.id }}')" class="p-2 hover:bg-surface-container-highest rounded-lg transition-colors text-on-surface-variant hover:text-error" title="Delete Thesis">
+                            <span class="material-symbols-outlined text-lg">delete</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4">
+                    <div class="{% if thesis.action == 'BUY' %}bg-primary-container text-primary border-primary/20{% elif thesis.action == 'SELL' %}bg-error-container/20 text-error border-error/20{% else %}bg-surface-container-highest text-secondary border-outline-variant/20{% endif %} px-3 py-1 rounded-lg border">
+                        <span class="font-bold text-xs">{{ thesis.action }}</span>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-[10px] text-on-surface-variant uppercase font-bold">Target Price</p>
+                        <p class="text-base font-headline font-bold text-on-surface">${{ thesis.target_price or '---' }}</p>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-[10px] text-on-surface-variant uppercase font-bold">Stop Loss</p>
+                        <p class="text-base font-headline font-bold text-error/80">${{ thesis.stop_loss or '---' }}</p>
+                    </div>
+                </div>
+
+                <div class="h-px w-full bg-outline-variant/10"></div>
+                
+                <div class="space-y-3">
+                    <h4 class="text-[10px] font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
+                        <span class="material-symbols-outlined text-xs {% if thesis.action == 'BUY' %}text-primary{% elif thesis.action == 'SELL' %}text-error{% else %}text-secondary{% endif %}">analytics</span>
+                        Thesis Logic
+                    </h4>
+                    <p class="text-xs text-on-surface-variant leading-relaxed font-medium">
+                        {{ thesis.conditions or thesis.catalyst or 'Strategic architectural logic pending...' }}
+                    </p>
+                </div>
+
+                <div class="mt-auto pt-4 flex items-center justify-between">
+                    <span class="text-[10px] text-on-surface-variant font-medium">Updated: {{ thesis.updated_at[:16].replace('T', ' ') if thesis.updated_at else thesis.created_at[:16].replace('T', ' ') if thesis.created_at else 'Active' }}</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="openCloseModal('{{ thesis.symbol }}')" class="px-2.5 py-1 bg-surface-container-highest hover:bg-primary/20 hover:text-primary text-[10px] font-bold rounded-lg transition-all text-on-surface-variant">
+                            Close & Record Outcome
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- Add New Thesis Placeholder -->
+            <button onclick="openThesisModal()" class="border-2 border-dashed border-outline-variant/20 rounded-xl p-6 flex flex-col items-center justify-center gap-4 text-on-surface-variant hover:border-primary/50 hover:text-primary transition-all group min-h-[280px]">
+                <div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center group-hover:bg-primary-container transition-colors">
+                    <span class="material-symbols-outlined">add</span>
+                </div>
+                <span class="text-[10px] font-bold uppercase tracking-widest">Architect New Thesis</span>
+            </button>
+        </div>
+
+        {% if not theses %}
+        <div class="mt-4 p-8 border border-outline-variant/10 rounded-2xl bg-surface-container-low text-center">
+            <span class="material-symbols-outlined text-5xl text-outline-variant/20 mb-3 block">menu_book</span>
+            <h3 class="text-lg font-bold mb-1">No Active Theses Pinned</h3>
+            <p class="text-on-surface-variant max-w-md mx-auto text-xs leading-relaxed">
+                Tactical stock positions auto-sync with your portfolio. Click "Architect New Thesis" to add conviction notes or risk rails to an active holding.
+            </p>
+        </div>
+        {% endif %}
+
+        <!-- Archived Decisions & Lessons Learned History -->
+        {% if journal_history %}
+        <section class="mt-8">
+            <div class="mb-4">
+                <h3 class="text-sm font-extrabold text-on-surface uppercase tracking-wider">Archived History & Lessons Learned</h3>
+                <p class="text-xs text-on-surface/50 mt-0.5">Historical log of closed positions auto-reconciled from portfolio syncs and manual exits.</p>
+            </div>
+
+            <div class="bg-surface-container-low rounded-2xl border border-outline-variant/10 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-outline-variant/10 bg-surface-container-high/50 text-[10px] uppercase font-bold text-on-surface-variant tracking-wider">
+                                <th class="py-3.5 px-4">Date</th>
+                                <th class="py-3.5 px-4">Symbol</th>
+                                <th class="py-3.5 px-4">Action</th>
+                                <th class="py-3.5 px-4">Status</th>
+                                <th class="py-3.5 px-4">Outcome</th>
+                                <th class="py-3.5 px-4">Thesis & Lessons Learned</th>
+                                <th class="py-3.5 px-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-outline-variant/5 text-xs">
+                            {% for item in journal_history %}
+                            <tr class="hover:bg-surface-container-high/40 transition-colors">
+                                <td class="py-3 px-4 font-mono text-[11px] text-on-surface-variant">{{ item.date or item.exit_date or '---' }}</td>
+                                <td class="py-3 px-4 font-bold text-on-surface">${{ item.symbol }}</td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold {% if item.action == 'BUY' %}bg-primary/10 text-primary{% elif item.action == 'SELL' %}bg-error/10 text-error{% else %}bg-surface-container-highest text-secondary{% endif %}">
+                                        {{ item.action }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold {% if item.status == 'OPEN' %}bg-emerald-500/10 text-emerald-400{% else %}bg-surface-container-highest text-on-surface-variant/70{% endif %}">
+                                        {{ item.status }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 font-semibold text-on-surface">
+                                    {{ item.outcome or '---' }}
+                                </td>
+                                <td class="py-3 px-4 text-on-surface-variant max-w-md">
+                                    <div class="font-medium text-on-surface text-xs">{{ item.thesis or '---' }}</div>
+                                    {% if item.lessons_learned %}
+                                    <div class="text-[11px] text-primary/80 italic mt-0.5">Lesson: {{ item.lessons_learned }}</div>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 px-4 text-right">
+                                    <button onclick="deleteThesis('{{ item.id }}')" class="p-1.5 hover:bg-error/10 rounded-lg text-on-surface-variant hover:text-error transition-colors">
+                                        <span class="material-symbols-outlined text-base">delete</span>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+    </div>
+
+    <!-- Modal for New Thesis -->
+    <div id="thesis-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-6 hidden">
+        <div class="absolute inset-0 bg-[#0b1326]/90 backdrop-blur-md" onclick="closeThesisModal()"></div>
+        <div class="relative w-full max-w-2xl bg-surface-container-high rounded-3xl border border-outline-variant/20 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+            <div class="p-6 border-b border-outline-variant/10 flex justify-between items-center">
+                <div>
+                    <h3 id="modal-title" class="text-xl font-headline font-black tracking-tighter">Architect Thesis</h3>
+                    <p class="text-[10px] text-on-surface-variant uppercase tracking-widest mt-0.5">Strategic Asset Configuration</p>
+                </div>
+                <button onclick="closeThesisModal()" class="w-8 h-8 rounded-full hover:bg-surface-container-highest flex items-center justify-center transition-colors text-on-surface-variant">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            </div>
+            
+            <form id="thesis-form" class="p-6 space-y-4">
+                <input type="hidden" id="thesis-id" name="id">
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-primary">Symbol / Ticker</label>
+                        <input type="text" id="thesis-symbol" name="symbol" required placeholder="e.g. AAPL"
+                            class="w-full bg-[#0b1326] border border-outline-variant/10 rounded-xl py-3 px-4 text-sm focus:ring-1 focus:ring-primary text-on-surface uppercase" />
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-primary">Action Regime</label>
+                        <select id="thesis-action" name="action" required
+                            class="w-full bg-[#0b1326] border border-outline-variant/10 rounded-xl py-3 px-4 text-sm focus:ring-1 focus:ring-primary text-on-surface">
+                            <option value="BUY">ENTRY (BUY)</option>
+                            <option value="HOLD">MONITOR (HOLD)</option>
+                            <option value="SELL">EXIT (SELL)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-primary">Target Objective ($)</label>
+                        <input type="number" step="0.01" id="thesis-target_price" name="target_price" placeholder="210.00"
+                            class="w-full bg-[#0b1326] border border-outline-variant/10 rounded-xl py-3 px-4 text-sm focus:ring-1 focus:ring-primary text-on-surface" />
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-primary">Stop Loss / Risk Rail ($)</label>
+                        <input type="number" step="0.01" id="thesis-stop_loss" name="stop_loss" placeholder="185.00"
+                            class="w-full bg-[#0b1326] border border-outline-variant/10 rounded-xl py-3 px-4 text-sm focus:ring-1 focus:ring-primary text-on-surface" />
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-primary">Architectural Logic / Thesis</label>
+                    <textarea id="thesis-logic" name="conditions" rows="3" required placeholder="Fundamental logic for this position..."
+                        class="w-full bg-[#0b1326] border border-outline-variant/10 rounded-xl py-3 px-4 text-sm focus:ring-1 focus:ring-primary text-on-surface"></textarea>
+                </div>
+
+                <div class="flex gap-3 pt-3">
+                    <button type="button" onclick="closeThesisModal()" class="flex-1 py-3 bg-surface-container-highest text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-surface-bright transition-all">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-[2] py-3 bg-primary text-on-primary text-[10px] font-black uppercase tracking-widest rounded-xl hover:brightness-110 transition-all shadow-lg shadow-primary/20">
+                        Commit Thesis
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Close Position -->
+    <div id="close-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-6 hidden">
+        <div class="absolute inset-0 bg-[#0b1326]/90 backdrop-blur-md" onclick="closeCloseModal()"></div>
+        <div class="relative w-full max-w-lg bg-surface-container-high rounded-3xl border border-outline-variant/20 shadow-2xl overflow-hidden">
+            <div class="p-6 border-b border-outline-variant/10 flex justify-between items-center">
+                <div>
+                    <h3 class="text-xl font-headline font-black tracking-tighter">Close Thesis Position</h3>
+                    <p class="text-[10px] text-on-surface-variant uppercase tracking-widest mt-0.5" id="close-symbol-header">Position Closure</p>
+                </div>
+                <button onclick="closeCloseModal()" class="w-8 h-8 rounded-full hover:bg-surface-container-highest flex items-center justify-center transition-colors text-on-surface-variant">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            </div>
+
+            <form id="close-form" class="p-6 space-y-4">
+                <input type="hidden" id="close-symbol" name="symbol">
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-primary">Exit Price ($)</label>
+                        <input type="number" step="0.01" id="close-exit_price" name="exit_price" required placeholder="195.00"
+                            class="w-full bg-[#0b1326] border border-outline-variant/10 rounded-xl py-3 px-4 text-sm focus:ring-1 focus:ring-primary text-on-surface" />
+                    </div>
+                    <div class="space-y-1.5">
+                        <label class="block text-[10px] font-black uppercase tracking-widest text-primary">Outcome</label>
+                        <select id="close-outcome" name="outcome" required
+                            class="w-full bg-[#0b1326] border border-outline-variant/10 rounded-xl py-3 px-4 text-sm focus:ring-1 focus:ring-primary text-on-surface">
+                            <option value="Profit">Profit</option>
+                            <option value="Loss">Loss</option>
+                            <option value="Breakeven">Breakeven</option>
+                            <option value="Target Reached">Target Reached</option>
+                            <option value="Stop Hit">Stop Hit</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="block text-[10px] font-black uppercase tracking-widest text-primary">Lesson Learned</label>
+                    <textarea id="close-lessons" name="lessons_learned" rows="3" placeholder="What did this trade/thesis teach you?"
+                        class="w-full bg-[#0b1326] border border-outline-variant/10 rounded-xl py-3 px-4 text-sm focus:ring-1 focus:ring-primary text-on-surface"></textarea>
+                </div>
+
+                <div class="flex gap-3 pt-3">
+                    <button type="button" onclick="closeCloseModal()" class="flex-1 py-3 bg-surface-container-highest text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-surface-bright transition-all">
+                        Cancel
+                    </button>
+                    <button type="submit" class="flex-[2] py-3 bg-emerald-500 text-black font-black text-[10px] uppercase tracking-widest rounded-xl hover:brightness-110 transition-all">
+                        Archive Closed Position
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const modal = document.getElementById('thesis-modal');
+    const form = document.getElementById('thesis-form');
+    const closeModal = document.getElementById('close-modal');
+    const closeForm = document.getElementById('close-form');
+
+    function openThesisModal() {
+        form.reset();
+        document.getElementById('thesis-id').value = '';
+        document.getElementById('modal-title').textContent = 'Architect Thesis';
+        modal.classList.remove('hidden');
+    }
+
+    function closeThesisModal() {
+        modal.classList.add('hidden');
+    }
+
+    function openCloseModal(symbol) {
+        closeForm.reset();
+        document.getElementById('close-symbol').value = symbol;
+        document.getElementById('close-symbol-header').textContent = `Position Closure — $${symbol}`;
+        closeModal.classList.remove('hidden');
+    }
+
+    function closeCloseModal() {
+        closeModal.classList.add('hidden');
+    }
+
+    async function deleteThesis(id) {
+        const confirmed = await cairnModal.show({
+            title: 'Decommission Thesis',
+            message: 'Permanently remove this strategic thesis from the journal?',
+            icon: 'delete_forever',
+            color: 'error'
+        });
+
+        if (!confirmed) return;
+        
+        try {
+            const response = await fetch(`/api/journal/${id}`, { method: 'DELETE' });
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (e) {
+            console.error("Delete failed:", e);
+        }
+    }
+
+    async function triggerReconcile() {
+        try {
+            const response = await fetch('/api/journal/reconcile', { method: 'POST' });
+            const data = await response.json();
+            if (data.auto_archived_count > 0) {
+                alert(`Auto-archived ${data.auto_archived_count} exited position(s): ${data.auto_archived_symbols.join(', ')}`);
+                location.reload();
+            } else {
+                alert("All active theses are up to date with your portfolio.");
+            }
+        } catch (e) {
+            console.error("Reconciliation failed:", e);
+        }
+    }
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        const payload = {
+            symbol: data.symbol,
+            action: data.action,
+            target_price: parseFloat(data.target_price || 0),
+            stop_loss: parseFloat(data.stop_loss || 0),
+            thesis: data.conditions || ''
+        };
+
+        try {
+            const response = await fetch('/api/journal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (e) {
+            console.error("Save failed:", e);
+        }
+    };
+
+    closeForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData(closeForm);
+        const data = Object.fromEntries(formData.entries());
+
+        const payload = {
+            symbol: data.symbol,
+            exit_price: parseFloat(data.exit_price || 0),
+            outcome: data.outcome,
+            lessons_learned: data.lessons_learned || ''
+        };
+
+        try {
+            const response = await fetch('/api/journal/close', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (response.ok) {
+                location.reload();
+            }
+        } catch (e) {
+            console.error("Close failed:", e);
+        }
+    };
+</script>
+{% endblock %}

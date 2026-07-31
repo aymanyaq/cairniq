@@ -1,0 +1,21 @@
+[run]
+omit =
+    .venv/*
+    tools/generate_report.py
+    tools/feedback.py
+    agent/nodes/market_analyst.py
+    tools/macro_strategy.py
+    tools/tax_loss.py
+    tools/health_check.py
+    tools/pattern_recognition.py
+    tools/options_strategy.py
+    tools/news_sources.py
+    tools/market_mechanics.py
+    tools/simulation.py
+    tools/compare_assets.py
+    tools/questrade.py
+    tools/comprehensive_data.py
+    tools/web_search.py
+    tools/options.py
+    agent/nodes/news_analyst.py
+    agent/nodes/deep_reasoning.py

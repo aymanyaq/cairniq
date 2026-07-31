@@ -1,0 +1,27 @@
+# Gitleaks configuration for CairnIQ.
+#
+# We start from gitleaks' full default ruleset (useDefault = true) and only add
+# narrowly-scoped allowlists for known false positives. Keep this file tight:
+# every allowlist entry must be justified, because anything matched here is
+# invisible to the secret scanner.
+#
+# This config is shared by both enforcement points:
+#   - the pre-commit hook (.pre-commit-config.yaml), at commit time
+#   - the CI "Security Scan" job (.github/workflows/ci.yml), on push / PR
+
+title = "CairnIQ gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = """
+Vendored, minified third-party bundles (vis-network, tom-select). Minified
+JavaScript object keys such as key:"_getDistanceToBezierEdge2" trip the
+generic-api-key rule. These are not our source and contain no secrets; we never
+hand-edit them. Scoped to minified assets under lib/ only — our own Python and
+JS source is still fully scanned.
+"""
+paths = [
+  '''lib/.*\.min\.(js|css)$''',
+]

@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>CairnIQ | Sign In</title>
+  <meta name="description" content="Sign in to CairnIQ — your personal portfolio intelligence console." />
+
+  <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@200;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "background": "#0b1326",
+            "surface": "#0b1326",
+            "surface-container": "#171f33",
+            "surface-container-high": "#222a3d",
+            "surface-container-highest": "#2d3449",
+            "on-surface": "#dae2fd",
+            "on-surface-variant": "#c6c6cd",
+            "primary": "#4edea3",
+            "primary-container": "#001c10",
+            "on-primary": "#003824",
+            "outline-variant": "#45464d",
+            "error": "#ffb4ab",
+            "error-container": "#93000a",
+          },
+          fontFamily: {
+            "headline": ["Manrope", "sans-serif"],
+            "body": ["Inter", "sans-serif"],
+          },
+        },
+      },
+    }
+  </script>
+
+  <style>
+    html { font-size: 16px; }
+    body {
+      background-color: #0b1326;
+      color: #dae2fd;
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+    }
+    h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+
+    /* Animated gradient background */
+    .login-bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .login-bg::before {
+      content: '';
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(78,222,163,0.08) 0%, transparent 70%);
+      top: -100px;
+      right: -100px;
+      animation: floatOrb 20s ease-in-out infinite;
+    }
+    .login-bg::after {
+      content: '';
+      position: absolute;
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(173,198,255,0.06) 0%, transparent 70%);
+      bottom: -150px;
+      left: -100px;
+      animation: floatOrb 25s ease-in-out infinite reverse;
+    }
+    @keyframes floatOrb {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      25% { transform: translate(30px, -40px) scale(1.05); }
+      50% { transform: translate(-20px, 20px) scale(0.95); }
+      75% { transform: translate(10px, 30px) scale(1.02); }
+    }
+
+    /* Glass card */
+    .login-card {
+      background: rgba(23, 31, 51, 0.7);
+      -webkit-backdrop-filter: blur(24px);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(69, 70, 77, 0.3);
+      box-shadow:
+        0 0 0 1px rgba(78,222,163,0.05),
+        0 25px 50px -12px rgba(0,0,0,0.5),
+        0 0 80px rgba(78,222,163,0.03);
+    }
+
+    /* Input focus ring */
+    .login-input {
+      background: rgba(11, 19, 38, 0.6);
+      border: 1px solid rgba(69, 70, 77, 0.4);
+      transition: all 0.2s ease;
+    }
+    .login-input:focus {
+      border-color: rgba(78, 222, 163, 0.5);
+      box-shadow: 0 0 0 3px rgba(78, 222, 163, 0.1);
+      outline: none;
+    }
+    .login-input::placeholder {
+      color: rgba(198, 198, 205, 0.4);
+    }
+
+    /* Button pulse on hover */
+    .login-btn {
+      background: linear-gradient(135deg, #4edea3 0%, #3db78a 100%);
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .login-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 25px rgba(78, 222, 163, 0.25);
+    }
+    .login-btn:active {
+      transform: translateY(0);
+    }
+    .login-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,56,36,0.3);
+      border-top-color: #003824;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error shake */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+    .shake { animation: shake 0.4s ease-in-out; }
+
+    /* Fade in */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+    .fade-in-up-delay { animation: fadeInUp 0.6s ease-out 0.15s forwards; opacity: 0; }
+  </style>
+</head>
+
+<body class="flex items-center justify-center min-h-screen p-4">
+  <div class="login-bg"></div>
+
+  <div class="relative z-10 w-full max-w-md">
+    <!-- Logo / Header -->
+    <div class="text-center mb-8 fade-in-up">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary-container border border-primary/20 mb-4">
+        <span class="material-symbols-outlined text-primary text-2xl">database</span>
+      </div>
+      <h1 class="text-2xl font-black tracking-tight text-on-surface font-headline">
+        Cairn<span class="text-primary">IQ</span>
+      </h1>
+      <p class="text-sm text-on-surface-variant mt-1 tracking-wide">Portfolio Intelligence Console</p>
+    </div>
+
+    <!-- Login Card -->
+    <div class="login-card rounded-2xl p-8 fade-in-up-delay" id="login-card">
+      <!-- Login Section -->
+      <div id="login-section">
+        <h2 class="text-lg font-bold font-headline text-on-surface mb-1">Welcome back</h2>
+        <p class="text-sm text-on-surface-variant mb-6">Sign in to access your dashboard</p>
+
+        <form id="login-form" autocomplete="on" novalidate>
+          <!-- Error banner -->
+          <div id="error-banner" class="hidden mb-4 p-3 rounded-xl bg-error-container/20 border border-error/20 text-error text-sm flex items-center gap-2">
+            <span class="material-symbols-outlined text-base">error</span>
+            <span id="error-message">Invalid username or password.</span>
+          </div>
+
+          <!-- Username -->
+          <div class="mb-4">
+            <label for="username" class="block text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-2">Username</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 text-lg">person</span>
+              <input
+                type="text"
+                id="username"
+                name="username"
+                autocomplete="username"
+                required
+                placeholder="Enter your username"
+                class="login-input w-full rounded-xl pl-10 pr-4 py-3 text-sm text-on-surface"
+              />
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="mb-6">
+            <label for="password" class="block text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-2">Password</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 text-lg">lock</span>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                autocomplete="current-password"
+                required
+                placeholder="Enter your password"
+                class="login-input w-full rounded-xl pl-10 pr-12 py-3 text-sm text-on-surface"
+              />
+              <button
+                type="button"
+                id="toggle-password"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 hover:text-on-surface-variant transition-colors"
+                title="Show password"
+              >
+                <span class="material-symbols-outlined text-lg" id="eye-icon">visibility</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <button
+            type="submit"
+            id="login-btn"
+            class="login-btn w-full rounded-xl py-3 text-sm font-bold text-on-primary tracking-wide"
+          >
+            <span id="btn-text">Sign In</span>
+            <span id="btn-spinner" class="hidden spinner ml-2"></span>
+          </button>
+
+          <!-- Toggle Link -->
+          <p class="text-center text-xs text-on-surface-variant mt-4">
+            Don't have an account?
+            <button type="button" id="switch-to-register" class="text-primary hover:underline font-semibold focus:outline-none">
+              Create an account
+            </button>
+          </p>
+        </form>
+      </div>
+
+      <!-- Register Section -->
+      <div id="register-section" class="hidden">
+        <h2 class="text-lg font-bold font-headline text-on-surface mb-1">Create Account</h2>
+        <p class="text-sm text-on-surface-variant mb-6">Register to get started</p>
+
+        <form id="register-form" autocomplete="off" novalidate>
+          <!-- Register Error banner -->
+          <div id="reg-error-banner" class="hidden mb-4 p-3 rounded-xl bg-error-container/20 border border-error/20 text-error text-sm flex items-center gap-2">
+            <span class="material-symbols-outlined text-base">error</span>
+            <span id="reg-error-message">Failed to create account.</span>
+          </div>
+
+          <!-- Username -->
+          <div class="mb-4">
+            <label for="reg-username" class="block text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-2">Username</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 text-lg">person</span>
+              <input
+                type="text"
+                id="reg-username"
+                name="username"
+                autocomplete="username"
+                required
+                placeholder="Choose a username"
+                class="login-input w-full rounded-xl pl-10 pr-4 py-3 text-sm text-on-surface"
+              />
+            </div>
+          </div>
+
+          <!-- Password -->
+          <div class="mb-4">
+            <label for="reg-password" class="block text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-2">Password</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 text-lg">lock</span>
+              <input
+                type="password"
+                id="reg-password"
+                name="password"
+                autocomplete="new-password"
+                required
+                placeholder="Choose a password (min 8 chars)"
+                class="login-input w-full rounded-xl pl-10 pr-12 py-3 text-sm text-on-surface"
+              />
+              <button
+                type="button"
+                id="reg-toggle-password"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 hover:text-on-surface-variant transition-colors"
+                title="Show password"
+              >
+                <span class="material-symbols-outlined text-lg" id="reg-eye-icon">visibility</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Confirm Password -->
+          <div class="mb-6">
+            <label for="reg-confirm-password" class="block text-xs font-semibold text-on-surface-variant uppercase tracking-widest mb-2">Confirm Password</label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 text-lg">lock</span>
+              <input
+                type="password"
+                id="reg-confirm-password"
+                name="confirm_password"
+                autocomplete="new-password"
+                required
+                placeholder="Confirm your password"
+                class="login-input w-full rounded-xl pl-10 pr-12 py-3 text-sm text-on-surface"
+              />
+              <button
+                type="button"
+                id="reg-toggle-confirm-password"
+                class="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/40 hover:text-on-surface-variant transition-colors"
+                title="Show password"
+              >
+                <span class="material-symbols-outlined text-lg" id="reg-confirm-eye-icon">visibility</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <button
+            type="submit"
+            id="reg-btn"
+            class="login-btn w-full rounded-xl py-3 text-sm font-bold text-on-primary tracking-wide"
+          >
+            <span id="reg-btn-text">Create Account</span>
+            <span id="reg-btn-spinner" class="hidden spinner ml-2"></span>
+          </button>
+
+          <!-- Toggle to login -->
+          <p class="text-center text-xs text-on-surface-variant mt-4">
+            Already have an account?
+            <button type="button" id="switch-to-login" class="text-primary hover:underline font-semibold focus:outline-none">
+              Sign In
+            </button>
+          </p>
+        </form>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <p class="text-center text-[11px] text-on-surface-variant/40 mt-6 tracking-wide fade-in-up-delay">
+      Local-first &middot; Privacy-respecting &middot; Your data stays yours
+    </p>
+  </div>
+
+  <script>
+    const form = document.getElementById('login-form');
+    const usernameInput = document.getElementById('username');
+    const passwordInput = document.getElementById('password');
+    const errorBanner = document.getElementById('error-banner');
+    const errorMessage = document.getElementById('error-message');
+    const loginBtn = document.getElementById('login-btn');
+    const btnText = document.getElementById('btn-text');
+    const btnSpinner = document.getElementById('btn-spinner');
+    const loginCard = document.getElementById('login-card');
+    const togglePassword = document.getElementById('toggle-password');
+    const eyeIcon = document.getElementById('eye-icon');
+
+    // Toggle password visibility
+    togglePassword.addEventListener('click', () => {
+      const isPassword = passwordInput.type === 'password';
+      passwordInput.type = isPassword ? 'text' : 'password';
+      eyeIcon.textContent = isPassword ? 'visibility_off' : 'visibility';
+      togglePassword.title = isPassword ? 'Hide password' : 'Show password';
+    });
+
+    function showError(msg) {
+      errorMessage.textContent = msg;
+      errorBanner.classList.remove('hidden');
+      loginCard.classList.add('shake');
+      setTimeout(() => loginCard.classList.remove('shake'), 400);
+    }
+
+    function hideError() {
+      errorBanner.classList.add('hidden');
+    }
+
+    function setLoading(loading) {
+      loginBtn.disabled = loading;
+      btnText.textContent = loading ? 'Signing in…' : 'Sign In';
+      if (loading) {
+        btnSpinner.classList.remove('hidden');
+      } else {
+        btnSpinner.classList.add('hidden');
+      }
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideError();
+
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!username || !password) {
+        showError('Please enter both username and password.');
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+          credentials: 'same-origin',
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          showError(body.error || 'Invalid username or password.');
+          setLoading(false);
+          return;
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const next = params.get('next') || '/';
+        const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/';
+        window.location.replace(safeNext);
+      } catch (err) {
+        showError('Unable to reach the server. Is CairnIQ running?');
+        setLoading(false);
+      }
+    });
+
+    // -------------------------------------------------------------------------
+    // Registration form
+    // -------------------------------------------------------------------------
+    const registerForm = document.getElementById('register-form');
+    const regUsernameInput = document.getElementById('reg-username');
+    const regPasswordInput = document.getElementById('reg-password');
+    const regConfirmInput = document.getElementById('reg-confirm-password');
+    const regErrorBanner = document.getElementById('reg-error-banner');
+    const regErrorMessage = document.getElementById('reg-error-message');
+    const regBtn = document.getElementById('reg-btn');
+    const regBtnText = document.getElementById('reg-btn-text');
+    const regBtnSpinner = document.getElementById('reg-btn-spinner');
+
+    // Register password toggles
+    document.getElementById('reg-toggle-password').addEventListener('click', () => {
+      const isPassword = regPasswordInput.type === 'password';
+      regPasswordInput.type = isPassword ? 'text' : 'password';
+      document.getElementById('reg-eye-icon').textContent = isPassword ? 'visibility_off' : 'visibility';
+    });
+    document.getElementById('reg-toggle-confirm-password').addEventListener('click', () => {
+      const isPassword = regConfirmInput.type === 'password';
+      regConfirmInput.type = isPassword ? 'text' : 'password';
+      document.getElementById('reg-confirm-eye-icon').textContent = isPassword ? 'visibility_off' : 'visibility';
+    });
+
+    function showRegError(msg) {
+      regErrorMessage.textContent = msg;
+      regErrorBanner.classList.remove('hidden');
+      loginCard.classList.add('shake');
+      setTimeout(() => loginCard.classList.remove('shake'), 400);
+    }
+
+    function hideRegError() {
+      regErrorBanner.classList.add('hidden');
+    }
+
+    function setRegLoading(loading) {
+      regBtn.disabled = loading;
+      regBtnText.textContent = loading ? 'Creating account…' : 'Create Account';
+      if (loading) {
+        regBtnSpinner.classList.remove('hidden');
+      } else {
+        regBtnSpinner.classList.add('hidden');
+      }
+    }
+
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideRegError();
+
+      const username = regUsernameInput.value.trim();
+      const password = regPasswordInput.value;
+      const confirm = regConfirmInput.value;
+
+      if (!username || !password || !confirm) {
+        showRegError('Please fill in all fields.');
+        return;
+      }
+      if (password.length < 8) {
+        showRegError('Password must be at least 8 characters.');
+        return;
+      }
+      if (password !== confirm) {
+        showRegError('Passwords do not match.');
+        return;
+      }
+
+      setRegLoading(true);
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+          credentials: 'same-origin',
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          showRegError(body.error || 'Failed to create account.');
+          setRegLoading(false);
+          return;
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const next = params.get('next') || '/';
+        const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/';
+        window.location.replace(safeNext);
+      } catch (err) {
+        showRegError('Unable to reach the server. Is CairnIQ running?');
+        setRegLoading(false);
+      }
+    });
+
+    // -------------------------------------------------------------------------
+    // Section switching
+    // -------------------------------------------------------------------------
+    const loginSection = document.getElementById('login-section');
+    const registerSection = document.getElementById('register-section');
+
+    document.getElementById('switch-to-register').addEventListener('click', () => {
+      hideError();
+      loginSection.classList.add('hidden');
+      registerSection.classList.remove('hidden');
+      regUsernameInput.focus();
+    });
+
+    document.getElementById('switch-to-login').addEventListener('click', () => {
+      hideRegError();
+      registerSection.classList.add('hidden');
+      loginSection.classList.remove('hidden');
+      usernameInput.focus();
+    });
+
+    // Auto-focus username on load
+    window.addEventListener('DOMContentLoaded', () => {
+      usernameInput.focus();
+    });
+  </script>
+</body>
+</html>

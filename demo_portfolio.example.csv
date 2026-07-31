@@ -1,0 +1,12 @@
+Symbol,Shares,Purchase Price,Current Price,Account,Currency,Return Pct
+AAPL,30,170.00,195.00,Demo Brokerage,USD,
+MSFT,25,380.00,430.00,Demo Brokerage,USD,
+NVDA,60,90.00,115.00,Demo Brokerage,USD,
+AMZN,40,175.00,190.00,Demo Brokerage,USD,
+GOOGL,25,165.00,175.00,Demo Brokerage,USD,
+SPY,45,500.00,520.00,Demo Brokerage,USD,
+VTI,60,240.00,255.00,Demo Brokerage,USD,
+CASH.TO,800,50.00,50.00,Demo Cash,CAD,
+XIC.TO,500,34.00,38.00,Demo TFSA,CAD,
+VCN.TO,400,45.00,48.00,Demo TFSA,CAD,
+PENSION-DEMO,59000,1.00,1.00,Demo Pension,CAD,5.5

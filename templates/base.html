@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>{% block title %}CairnIQ | Portfolio Intelligence{% endblock %}</title>
+
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@200;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    // Configure marked for rich terminal output
+    if (typeof marked !== 'undefined') {
+      try {
+        if (marked.use) {
+          marked.use({
+            gfm: true,
+            breaks: true,
+            // Stop ACCIDENTAL strikethrough. GFM treats a matching pair of single tildes
+            // (~ ... ~) as strikethrough, and the assistant writes "~$100K", "~10 pts",
+            // "~$10K" to mean "approximately" — two such tildes pair up and strike all
+            // the text between them. Consume an approximation-tilde (~ immediately before
+            // a digit or $) as literal text BEFORE the strikethrough tokenizer can pair it,
+            // so it renders as typed. Bold, tables, and code spans are untouched.
+            extensions: [{
+              name: 'approxTilde',
+              level: 'inline',
+              start(src) { return src.indexOf('~'); },
+              tokenizer(src) {
+                if (/^~(?=[\d$])/.test(src)) {
+                  return { type: 'text', raw: '~', text: '~' };
+                }
+              }
+            }]
+          });
+        } else if (marked.setOptions) {
+          marked.setOptions({ gfm: true, breaks: true, tables: true });
+        }
+      } catch (e) {}
+    }
+  </script>
+  {# Chart.js is NOT loaded here. It is 204KB and only dashboard.html calls
+     `new Chart(`; every other page paid for it on each navigation. Pages that
+     need it pull it in through the head block defined further down. #}
+
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "outline": "#909097",
+            "outline-variant": "#45464d",
+            "on-tertiary": "#233143",
+            "surface-container-highest": "#2d3449",
+            "surface-container-high": "#222a3d",
+            "tertiary-fixed-dim": "#b9c8de",
+            "secondary-fixed-dim": "#adc6ff",
+            "on-secondary-fixed-variant": "#004395",
+            "surface-container": "#171f33",
+            "on-error-container": "#ffdad6",
+            "tertiary-container": "#081828",
+            "on-primary-container": "#009365",
+            "surface-tint": "#4edea3",
+            "secondary-container": "#0566d9",
+            "error-container": "#93000a",
+            "primary-fixed": "#6ffbbe",
+            "on-secondary-fixed": "#001a42",
+            "secondary-fixed": "#d8e2ff",
+            "on-tertiary-fixed-variant": "#39485a",
+            "error": "#ffb4ab",
+            "on-secondary-container": "#e6ecff",
+            "surface-container-low": "#131b2e",
+            "inverse-on-surface": "#283044",
+            "on-primary": "#003824",
+            "on-primary-fixed": "#002113",
+            "on-surface-variant": "#c6c6cd",
+            "on-surface": "#dae2fd",
+            "surface-bright": "#31394d",
+            "on-error": "#690005",
+            "on-tertiary-container": "#738296",
+            "background": "#0b1326",
+            "tertiary": "#b9c8de",
+            "surface-variant": "#2d3449",
+            "surface-container-lowest": "#060e20",
+            "secondary": "#adc6ff",
+            "primary": "#4edea3",
+            "on-primary-fixed-variant": "#005236",
+            "surface": "#0b1326",
+            "primary-fixed-dim": "#4edea3",
+            "on-background": "#dae2fd",
+            "on-tertiary-fixed": "#0d1c2d",
+            "inverse-surface": "#dae2fd",
+            "on-secondary": "#002e6a",
+            "primary-container": "#001c10",
+            "surface-dim": "#0b1326",
+            "tertiary-fixed": "#d4e4fa",
+            "inverse-primary": "#006c49"
+          },
+          fontFamily: {
+            "headline": ["Manrope"],
+            "body": ["Inter"],
+            "label": ["Inter"]
+          },
+          borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+        },
+      },
+    }
+  </script>
+
+  <script id="ui-logger">
+    function logToBackend(level, message, data = {}, phase = 'UI') {
+      try {
+        fetch('/api/logs/frontend', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ level, phase, message, data })
+        }).catch(() => {});
+      } catch (e) {}
+    }
+    window.onerror = function(message, source, lineno, colno, error) {
+      logToBackend('ERROR', 'Uncaught Exception', { message, source, lineno, colno, stack: error?.stack });
+      return false;
+    };
+    window.onunhandledrejection = function(event) {
+      logToBackend('ERROR', 'Unhandled Rejection', { reason: event.reason?.message || String(event.reason) });
+    };
+    document.addEventListener('DOMContentLoaded', () => {
+      logToBackend('INFO', 'CairnIQ Initialized', {
+        userAgent: navigator.userAgent,
+        screen: `${window.innerWidth}x${window.innerHeight}`
+      });
+    });
+  </script>
+
+  <style>
+    /* Lock the root font-size so Edge can't scale the layout via the
+       Windows "Make text bigger" accessibility setting (Chrome ignores it,
+       Edge respects it, which is why Edge made every rem-sized panel and
+       sidebar render visibly larger than Chrome on the same machine). */
+    html { font-size: 16px; }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    body {
+      background-color: #0b1326;
+      color: #dae2fd;
+      font-family: 'Inter', sans-serif;
+    }
+    h1, h2, h3, h4, h5, h6, .font-headline { font-family: 'Manrope', sans-serif; }
+
+    .glass-panel, .glass-card {
+      background: rgba(45, 52, 73, 0.4);
+      -webkit-backdrop-filter: blur(12px);   /* Safari */
+      backdrop-filter: blur(12px);
+    }
+
+    /* Global scrollbar styling */
+    ::-webkit-scrollbar, .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track, .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb, .custom-scrollbar::-webkit-scrollbar-thumb { background: #2d3449; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover, .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #31394d; }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .text-emerald-gradient {
+        background: linear-gradient(135deg, #4edea3 0%, #3db78a 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    /* Markdown global styling */
+    .markdown-content {
+        overflow-wrap: break-word;
+        word-break: break-word;
+        white-space: pre-wrap;
+        min-width: 0;
+        max-width: 100%;
+    }
+    .markdown-content p { margin-bottom: 0.75rem; color: #b9c8de; white-space: pre-wrap; overflow-wrap: break-word; word-break: break-word; }
+    .markdown-content p:empty { display: none; }
+    .markdown-content blockquote { padding-left: 1rem; border-left: 4px solid #4edea3; color: #b9c8de; font-style: italic; margin: 1rem 0; white-space: pre-wrap; }
+    .markdown-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; color: #b9c8de; white-space: normal; }
+    .markdown-content li { margin-bottom: 0.5rem; line-height: 1.6; white-space: normal; }
+    .markdown-content strong { color: #4edea3; }
+    .markdown-content em { color: #dae2fd; font-style: italic; }
+    .markdown-content h1, .markdown-content h2, .markdown-content h3, .markdown-content h4 { color: #dae2fd; font-family: 'Manrope', sans-serif; font-weight: bold; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+    .markdown-content h1 { font-size: 1.25rem; }
+    .markdown-content h2 { font-size: 1.1rem; }
+    .markdown-content h3 { font-size: 1rem; }
+    .markdown-content h4 { font-size: 0.9rem; color: #4edea3; }
+    .markdown-content hr { border: none; border-top: 1px solid rgba(78,222,163,0.2); margin: 0.75rem 0; }
+
+    /* Explicit margin collapsing to prevent huge gaps */
+    .markdown-content hr + h1, .markdown-content hr + h2, .markdown-content hr + h3, .markdown-content hr + h4 { margin-top: 0.5rem !important; }
+    .markdown-content h1 + p, .markdown-content h2 + p, .markdown-content h3 + p, .markdown-content h4 + p { margin-top: 0 !important; }
+    .markdown-content > *:first-child { margin-top: 0 !important; }
+    .markdown-content > *:last-child { margin-bottom: 0 !important; }
+
+    /* Tables — critical for scan/analysis output */
+    .markdown-content table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.8rem; table-layout: auto; }
+    .markdown-content thead th { background: rgba(78,222,163,0.08); color: #4edea3; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; padding: 0.5rem 0.75rem; text-align: left; border-bottom: 2px solid rgba(78,222,163,0.2); }
+    .markdown-content tbody td { padding: 0.5rem 0.75rem; border-bottom: 1px solid rgba(218,226,253,0.06); color: #b9c8de; vertical-align: top; word-break: normal; overflow-wrap: normal; }
+    .markdown-content tbody tr:hover { background: rgba(78,222,163,0.04); }
+
+    /* Code blocks */
+    .markdown-content code { font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 0.8rem; background: rgba(218,226,253,0.06); color: #4edea3; padding: 0.15em 0.4em; border-radius: 4px; word-break: break-word; white-space: pre-wrap; }
+    .markdown-content pre { background: rgba(11,19,38,0.8); border: 1px solid rgba(218,226,253,0.08); border-radius: 8px; padding: 1rem; margin: 1rem 0; overflow-x: auto; white-space: pre; }
+    .markdown-content pre code { background: none; padding: 0; color: #b9c8de; word-break: normal; white-space: pre; }
+
+    /* Links */
+    .markdown-content a { color: #4edea3; text-decoration: underline; text-underline-offset: 2px; }
+    .markdown-content a:hover { color: #6ff0be; }
+
+    /* App Modal Specifics */
+    #cairn-modal .markdown-content p { color: #dae2fd/80; font-size: 0.875rem; line-height: 1.6; }
+    #cairn-modal .markdown-content h1, #cairn-modal .markdown-content h2 { margin-top: 1rem; font-size: 1rem; color: #4edea3; }
+
+    /* Global Print Resets */
+    @media print {
+      html, body {
+        height: auto !important;
+        overflow: visible !important;
+        display: block !important;
+      }
+      .h-screen { height: auto !important; min-height: auto !important; }
+      .overflow-hidden, .overflow-y-auto { overflow: visible !important; }
+      aside, nav, #cairn-modal { display: none !important; }
+      .ml-64 { margin-left: 0 !important; display: block !important; }
+      body.flex { display: block !important; }
+
+      /* Reset dark mode containers for paper */
+      [class*="bg-surface"], .bg-background {
+        background: transparent !important;
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+      }
+      .text-on-surface, .text-on-surface-variant { color: #000 !important; }
+    }
+  </style>
+
+  {% block head %}{% endblock %}
+</head>
+
+<body class="bg-background text-on-surface antialiased flex h-screen overflow-hidden {% block body_class %}{% endblock %}">
+
+  {% set current_path = request.url.path %}
+
+  <!-- Sidebar Navigation (SideNavBar) -->
+  <aside class="h-screen w-64 fixed left-0 top-0 overflow-y-auto bg-[#131b2e] flex flex-col py-8 px-4 font-['Manrope'] antialiased tracking-tight z-50">
+    <div class="mb-12 px-2 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center border border-primary/20">
+            <span class="material-symbols-outlined text-primary text-sm">database</span>
+        </div>
+        <div>
+            <h1 class="text-lg font-black tracking-tighter text-[#4edea3]">CairnIQ</h1>
+            <div class="flex items-center gap-2">
+              <p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant">Console v{{ app_version }}</p>
+              {% if demo_mode %}
+              <span class="text-[8px] font-black uppercase tracking-widest text-amber-300 bg-amber-300/10 border border-amber-300/20 px-1.5 py-0.5 rounded">Demo</span>
+              {% endif %}
+            </div>
+        </div>
+    </div>
+    <nav class="flex-1 space-y-1">
+        <a class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors font-medium text-xs duration-150 active:scale-95 group {{ 'text-[#4edea3] border-r-2 border-[#4edea3] font-bold bg-[#2d3449]/30' if current_path == '/dashboard' else 'hover:bg-[#2d3449] hover:text-[#dae2fd] text-[#dae2fd]/60' }}" href="/dashboard">
+            <span class="material-symbols-outlined text-lg {{ 'text-primary' if current_path == '/dashboard' else 'group-hover:text-primary transition-colors' }}">dashboard</span>
+            <span>Dashboard</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors font-medium text-xs duration-150 active:scale-95 group {{ 'text-[#4edea3] border-r-2 border-[#4edea3] font-bold bg-[#2d3449]/30' if current_path == '/' else 'hover:bg-[#2d3449] hover:text-[#dae2fd] text-[#dae2fd]/60' }}" href="/">
+            <span class="material-symbols-outlined text-lg {{ 'text-primary' if current_path == '/' else 'group-hover:text-primary transition-colors' }}">chat_bubble</span>
+            <span>Chat</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors font-medium text-xs duration-150 active:scale-95 group {{ 'text-[#4edea3] border-r-2 border-[#4edea3] font-bold bg-[#2d3449]/30' if current_path == '/context' else 'hover:bg-[#2d3449] hover:text-[#dae2fd] text-[#dae2fd]/60' }}" href="/context">
+            <span class="material-symbols-outlined text-lg {{ 'text-primary' if current_path == '/context' else 'group-hover:text-primary transition-colors' }}">account_tree</span>
+            <span>Context</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors font-medium text-xs duration-150 active:scale-95 group {{ 'text-[#4edea3] border-r-2 border-[#4edea3] font-bold bg-[#2d3449]/30' if current_path == '/journal' else 'hover:bg-[#2d3449] hover:text-[#dae2fd] text-[#dae2fd]/60' }}" href="/journal">
+            <span class="material-symbols-outlined text-lg {{ 'text-primary' if current_path == '/journal' else 'group-hover:text-primary transition-colors' }}">menu_book</span>
+            <span>Thesis Journal</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors font-medium text-xs duration-150 active:scale-95 group {{ 'text-[#4edea3] border-r-2 border-[#4edea3] font-bold bg-[#2d3449]/30' if current_path == '/recommendations' else 'hover:bg-[#2d3449] hover:text-[#dae2fd] text-[#dae2fd]/60' }}" href="/recommendations">
+            <span class="material-symbols-outlined text-lg {{ 'text-primary' if current_path == '/recommendations' else 'group-hover:text-primary transition-colors' }}">leaderboard</span>
+            <span>Advisor Ledger</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors font-medium text-xs duration-150 active:scale-95 group {{ 'text-[#4edea3] border-r-2 border-[#4edea3] font-bold bg-[#2d3449]/30' if current_path == '/alerts' else 'hover:bg-[#2d3449] hover:text-[#dae2fd] text-[#dae2fd]/60' }}" href="/alerts">
+            <span class="material-symbols-outlined text-lg {{ 'text-primary' if current_path == '/alerts' else 'group-hover:text-primary transition-colors' }}">notifications</span>
+            <span>Alerts</span>
+            <span id="alerts-nav-badge" class="hidden ml-auto text-[9px] font-black bg-error/80 text-white px-1.5 py-0.5 rounded-full min-w-[1.1rem] text-center">0</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors font-medium text-xs duration-150 active:scale-95 group {{ 'text-[#4edea3] border-r-2 border-[#4edea3] font-bold bg-[#2d3449]/30' if current_path == '/review' else 'hover:bg-[#2d3449] hover:text-[#dae2fd] text-[#dae2fd]/60' }}" href="/review">
+            <span class="material-symbols-outlined text-lg {{ 'text-primary' if current_path == '/review' else 'group-hover:text-primary transition-colors' }}">summarize</span>
+            <span>Weekly Review</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors font-medium text-xs duration-150 active:scale-95 group {{ 'text-[#4edea3] border-r-2 border-[#4edea3] font-bold bg-[#2d3449]/30' if current_path == '/portfolio' else 'hover:bg-[#2d3449] hover:text-[#dae2fd] text-[#dae2fd]/60' }}" href="/portfolio">
+            <span class="material-symbols-outlined text-lg {{ 'text-primary' if current_path == '/portfolio' else 'group-hover:text-primary transition-colors' }}">pie_chart</span>
+            <span>Portfolio</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors font-medium text-xs duration-150 active:scale-95 group {{ 'text-[#4edea3] border-r-2 border-[#4edea3] font-bold bg-[#2d3449]/30' if current_path == '/monitor' else 'hover:bg-[#2d3449] hover:text-[#dae2fd] text-[#dae2fd]/60' }}" href="/monitor">
+            <span class="material-symbols-outlined text-lg {{ 'text-primary' if current_path == '/monitor' else 'group-hover:text-primary transition-colors' }}">monitoring</span>
+            <span>Monitor</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-2 rounded-xl transition-colors font-medium text-xs duration-150 active:scale-95 group {{ 'text-[#4edea3] border-r-2 border-[#4edea3] font-bold bg-[#2d3449]/30' if current_path == '/settings' else 'hover:bg-[#2d3449] hover:text-[#dae2fd] text-[#dae2fd]/60' }}" href="/settings">
+            <span class="material-symbols-outlined text-lg {{ 'text-primary' if current_path == '/settings' else 'group-hover:text-primary transition-colors' }}">settings</span>
+            <span>Settings</span>
+        </a>
+    </nav>
+    {% block sidebar_extra %}{% endblock %}
+    <div class="mt-auto pt-4 border-t border-outline-variant/10 p-4">
+        <!-- Live Portfolio Quote -->
+        <div class="mb-4 px-4 py-3 rounded-xl bg-primary/5 border border-primary/10 transition-all duration-500 overflow-hidden relative group">
+          <div class="flex items-center justify-between mb-1">
+            <p id="portfolio-status-label" class="text-[10px] uppercase tracking-widest text-primary">{{ 'Demo Portfolio' if demo_mode else 'Live Portfolio' }}</p>
+            <div id="sync-warning-badge" class="hidden flex items-center gap-1 text-[9px] text-amber-400 font-bold animate-pulse group cursor-help" title="Some accounts failed to sync. Showing partial data.">
+              <span class="material-symbols-outlined text-[10px]">sync_problem</span>
+              <span>SYNC ISSUE</span>
+            </div>
+          </div>
+          <p class="text-sm font-bold text-on-surface flex items-baseline gap-1">
+            <span id="sidebar-total-value">{{ total_value_cad }}</span>
+            <span id="sidebar-percent-return" class="text-xs text-primary font-normal">({{ percent_return }})</span>
+          </p>
+          <p id="last-sync-container" class="hidden text-[9px] text-on-surface-variant flex items-center gap-1 mt-1 opacity-60">
+              <span class="material-symbols-outlined text-[10px]">history</span>
+              <span>Updated <span id="last-sync-time">Just Now</span></span>
+          </p>
+        </div>
+
+        {% if demo_mode %}
+            {% set display_name = 'Demo User' %}
+        {% elif logged_in_user and logged_in_user.sub %}
+            {% set display_name = logged_in_user.sub %}
+        {% else %}
+            {% set display_name = env_settings.QUESTRADE_ACCOUNT_OWNER or profile.name or 'User' %}
+        {% endif %}
+        {% set name_parts = display_name.strip().split() %}
+        {% if name_parts|length >= 2 %}
+            {% set initials = (name_parts[0][0] ~ name_parts[-1][0])|upper %}
+        {% else %}
+            {% set initials = (display_name[0])|upper if display_name else 'U' %}
+        {% endif %}
+        <div class="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container-high/40 group relative">
+            <div class="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center shrink-0">
+                <span class="text-[11px] font-bold text-primary select-none">{{ initials }}</span>
+            </div>
+            <div class="flex-1 min-w-0 text-left">
+                <p class="text-[10px] font-bold truncate">{{ display_name }}</p>
+                <p class="text-[9px] text-on-surface-variant uppercase tracking-widest">{{ 'Isolated Demo' if demo_mode else 'CairnIQ Access' }}</p>
+            </div>
+            {% if not demo_mode %}
+            <button
+              id="sidebar-logout-btn"
+              title="Sign out"
+              class="opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant/50 hover:text-error focus:outline-none"
+              onclick="cairniqLogout()"
+            >
+              <span class="material-symbols-outlined text-base">logout</span>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+  </aside>
+
+  <!-- Main Content Wrapper -->
+  <div class="ml-64 flex flex-col flex-1 h-screen overflow-hidden">
+    {% block content %}{% endblock %}
+  </div>
+
+  <script src="/static/js/chat.js?v={{ app_version }}"></script>
+
+  <!-- App Modal System -->
+  <div id="cairn-modal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
+    <div class="absolute inset-0 bg-surface/80 backdrop-blur-md" id="modal-backdrop"></div>
+    <div class="bg-surface-container-highest border border-outline-variant/20 rounded-2xl shadow-2xl w-full max-w-2xl relative overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+      <div class="p-6 border-b border-outline-variant/10 shrink-0">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span id="modal-icon" class="material-symbols-outlined text-primary text-2xl">info</span>
+              <h3 id="modal-title" class="text-lg font-bold font-headline">Modal Title</h3>
+            </div>
+            <button id="modal-close-x" class="text-on-surface-variant hover:text-on-surface transition-colors">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+      </div>
+      <div class="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
+        <div id="modal-message" class="text-sm text-on-surface-variant leading-relaxed">Modal message goes here.</div>
+        <div id="modal-input-container" class="hidden">
+          <textarea id="modal-textarea" rows="3" class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl text-sm p-4 focus:ring-1 focus:ring-primary/50 text-on-surface placeholder-on-surface-variant/40 outline-none resize-none" placeholder="Enter content..."></textarea>
+        </div>
+      </div>
+      <div class="p-6 flex justify-end gap-3 bg-surface-container-high/50 shrink-0">
+        <button id="modal-cancel" class="px-6 py-2 rounded-xl text-sm font-bold text-on-surface-variant hover:bg-surface-container-highest transition-colors">Cancel</button>
+        <button id="modal-confirm" class="px-6 py-2 rounded-xl text-sm font-bold bg-primary text-on-primary shadow-lg shadow-primary/10 hover:scale-[1.02] transition-transform">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const cairnModal = {
+      active: false,
+      resolve: null,
+
+      init() {
+        const backdrop = document.getElementById('modal-backdrop');
+        const cancel = document.getElementById('modal-cancel');
+        const confirm = document.getElementById('modal-confirm');
+        const closeX = document.getElementById('modal-close-x');
+
+        const close = () => this.respond(null);
+        backdrop.onclick = close;
+        cancel.onclick = close;
+        closeX.onclick = close;
+
+        confirm.onclick = () => {
+          const input = document.getElementById('modal-textarea').value;
+          this.respond(this.type === 'prompt' ? input : true);
+        };
+
+        window.addEventListener('keydown', (e) => {
+          if (!this.active) return;
+          if (e.key === 'Escape') close();
+          if (e.key === 'Enter' && !e.shiftKey) {
+            if (this.type === 'confirm' || this.type === 'prompt') {
+              e.preventDefault();
+              this.respond(this.type === 'prompt' ? document.getElementById('modal-textarea').value : true);
+            }
+          }
+        });
+      },
+
+      async show({ title, message, type = 'confirm', placeholder = '...', icon = 'info', color = 'primary', confirmText = 'Confirm' }) {
+        this.active = true;
+        this.type = type;
+
+        const modal = document.getElementById('cairn-modal');
+        const titleEl = document.getElementById('modal-title');
+        const msgEl = document.getElementById('modal-message');
+        const iconEl = document.getElementById('modal-icon');
+        const inputCont = document.getElementById('modal-input-container');
+        const textarea = document.getElementById('modal-textarea');
+        const confirmBtn = document.getElementById('modal-confirm');
+        const cancelBtn = document.getElementById('modal-cancel');
+
+        titleEl.innerText = title;
+        msgEl.innerHTML = message;
+        iconEl.innerText = icon;
+
+        // Dynamic styling.
+        //
+        // Every class name here is spelled out in full, on purpose. These used to
+        // be interpolated (`bg-${color}`, `text-on-${color}`, `shadow-${color}/10`),
+        // which works only because the Tailwind Play CDN compiles in the browser
+        // and can see the finished string. Any build-time Tailwind — a CLI build,
+        // a purge step — scans source text and would never emit these rules, so
+        // the modal would lose its button colour in production and nowhere else.
+        // `color` only ever takes these two values (see the callers).
+        const MODAL_THEMES = {
+          primary: {
+            icon: 'material-symbols-outlined text-2xl text-primary',
+            confirm: 'px-6 py-2 rounded-xl text-sm font-bold bg-primary text-on-primary shadow-lg shadow-primary/10 hover:scale-[1.02] transition-transform',
+          },
+          error: {
+            icon: 'material-symbols-outlined text-2xl text-error',
+            confirm: 'px-6 py-2 rounded-xl text-sm font-bold bg-error text-on-error shadow-lg shadow-error/10 hover:scale-[1.02] transition-transform',
+          },
+        };
+        const theme = MODAL_THEMES[color] || MODAL_THEMES.primary;
+        iconEl.className = theme.icon;
+        confirmBtn.innerText = confirmText;
+        confirmBtn.className = theme.confirm;
+
+        if (type === 'alert') {
+            cancelBtn.classList.add('hidden');
+        } else {
+            cancelBtn.classList.remove('hidden');
+        }
+
+        if (type === 'prompt') {
+          inputCont.classList.remove('hidden');
+          textarea.value = '';
+          textarea.placeholder = placeholder;
+          setTimeout(() => textarea.focus(), 50);
+        } else {
+          inputCont.classList.add('hidden');
+        }
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        return new Promise(res => { this.resolve = res; });
+      },
+
+      respond(val) {
+        this.active = false;
+        document.getElementById('cairn-modal').classList.add('hidden');
+        document.getElementById('cairn-modal').classList.remove('flex');
+        if (this.resolve) this.resolve(val);
+      }
+    };
+    document.addEventListener('DOMContentLoaded', () => cairnModal.init());
+
+    async function cairniqLogout() {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+      } catch (_) {}
+      window.location.replace('/login');
+    }
+  </script>
+
+  <!-- Alerts badge (Advisor Roadmap Theme 3.2): unread count in the nav,
+       refreshed on load and on a light poll. Pages with a Live-Link socket
+       (the alerts inbox) bump it instantly via bumpAlertsBadge(). -->
+  <script>
+    function updateBadge(count) {
+      const badge = document.getElementById('alerts-nav-badge');
+      if (!badge) return;
+      const n = Number(count) || 0;
+      badge.textContent = n > 99 ? '99+' : String(n);
+      badge.classList.toggle('hidden', n === 0);
+    }
+
+    let _badgeCount = 0;
+    function bumpAlertsBadge() { updateBadge(++_badgeCount); }
+
+    async function refreshAlertsBadge() {
+      try {
+        const res = await fetch('/api/alerts?limit=1');
+        if (!res.ok) return;
+        const data = await res.json();
+        _badgeCount = data.unread_count || 0;
+        updateBadge(_badgeCount);
+      } catch (e) {}
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      refreshAlertsBadge();
+      setInterval(refreshAlertsBadge, 120000);
+    });
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

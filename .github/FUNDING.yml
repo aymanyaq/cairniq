@@ -1,0 +1,6 @@
+# GitHub Sponsors funding configuration
+# This displays a "Sponsor" button on the repository sidebar pointing to trusted organizations providing Gaza emergency aid.
+
+custom:
+  - https://www.unrwa.org/gaza-emergency
+  - https://www.islamicreliefcanada.org/emergencies/palestine-appeal

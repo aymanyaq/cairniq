@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}CairnIQ | Weekly Review{% endblock %}
+
+{#
+  Rendered entirely server-side, with no inline <script>. That is deliberate on
+  two counts: this page is meant to be read once a week and printed, so it must
+  not depend on client JS having run; and a single parse error in an inline
+  script takes the whole block down, which is how a panel ends up stuck on
+  "Loading …" with a healthy backend behind it.
+
+  Every section renders whatever its status. A section with nothing to report
+  prints its note — never nothing. See tools/weekly_review.py for why.
+#}
+
+{% block head %}
+<style>
+  @media print {
+    aside, nav, .no-print { display: none !important; }
+    .review-page { padding: 0 !important; }
+    .review-card { break-inside: avoid; border-color: #ddd !important; }
+    body { background: #fff !important; color: #000 !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex-1 overflow-y-auto custom-scrollbar p-8 review-page">
+  <div class="max-w-4xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-start justify-between">
+      <div>
+        <h1 class="text-2xl font-black font-headline tracking-tight">Weekly Review</h1>
+        <p class="text-xs text-on-surface-variant mt-1">
+          {{ review.period.label }} &middot; {{ review.counts.ok }} of {{ review.counts.total }} sections reporting
+        </p>
+      </div>
+      <button onclick="window.print()" class="no-print px-4 py-2 rounded-xl text-xs font-bold bg-surface-container-highest border border-outline-variant/20 text-on-surface-variant hover:text-primary hover:border-primary/30 transition-colors">
+        Print
+      </button>
+    </div>
+
+    <p class="text-[11px] text-on-surface-variant/70 border-l-2 border-outline-variant/30 pl-3">
+      {{ review.contract }}
+    </p>
+
+    {% for section in review.sections %}
+    <div class="review-card bg-surface-container rounded-2xl border border-outline-variant/15 p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-black font-headline tracking-tight">{{ section.title }}</h2>
+        {% if section.status == 'empty' %}
+          <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-surface-container-highest text-on-surface-variant/70">nothing to report</span>
+        {% elif section.status == 'unreadable' %}
+          <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-error/15 text-error">unavailable</span>
+        {% endif %}
+      </div>
+
+      {% if section.note %}
+        <p class="text-xs text-on-surface-variant leading-relaxed">{{ section.note }}</p>
+      {% endif %}
+
+      {% if section.status == 'ok' %}
+        {% if section.key == 'goal' %}
+          <div class="grid grid-cols-2 gap-4 text-xs">
+            <div>
+              <div class="text-on-surface-variant/60 text-[10px] uppercase tracking-wide">Chance of reaching the target</div>
+              <div class="text-2xl font-black mt-1">{{ section.goal_success_rate }}%</div>
+            </div>
+            <div>
+              <div class="text-on-surface-variant/60 text-[10px] uppercase tracking-wide">Portfolio value</div>
+              <div class="text-2xl font-black mt-1">{{ section.currency }} {{ '{:,.0f}'.format(section.current_value) }}</div>
+            </div>
+          </div>
+          {% if section.required_annual_return %}
+          <div class="mt-4 text-xs text-on-surface-variant">
+            Return the plan requires:
+            {% for label, value in section.required_annual_return.items() %}
+              <span class="font-bold text-on-surface">{{ label }} {{ value }}</span>{% if not loop.last %} &middot; {% endif %}
+            {% endfor %}
+          </div>
+          {% endif %}
+          {# The realized-return STATUS, not a number. Printing the required return
+             beside nothing would read as a comparison against zero. #}
+          {% if section.realized_annual_return and not section.realized_annual_return.available %}
+          <div class="mt-3 text-[11px] text-on-surface-variant/70">
+            Realized return is not shown:
+            {% for blocker in section.realized_annual_return.blockers %}{{ blocker }}{% if not loop.last %}; {% endif %}{% endfor %}.
+          </div>
+          {% endif %}
+
+        {% elif section.key == 'market' %}
+          <div class="text-lg font-black">{{ section.regime }}</div>
+          {% if section.headline %}<div class="text-xs text-on-surface-variant mt-1">{{ section.headline }}</div>{% endif %}
+          {% if section.portfolio_alerts %}
+          <ul class="mt-4 space-y-1 text-xs text-on-surface-variant">
+            {% for alert in section.portfolio_alerts %}<li>&bull; {{ alert }}</li>{% endfor %}
+          </ul>
+          {% endif %}
+
+        {% elif section.key == 'scorecard' %}
+          <div class="grid grid-cols-3 gap-4 text-xs">
+            {% for horizon, stat in section.horizons.items() %}
+            <div>
+              <div class="text-on-surface-variant/60 text-[10px] uppercase tracking-wide">{{ horizon }}</div>
+              <div class="text-xl font-black mt-1">{{ stat.hit_rate }}%</div>
+              <div class="text-[10px] text-on-surface-variant/70">{{ stat.total }} scored &middot; alpha {{ stat.avg_alpha }}</div>
+            </div>
+            {% endfor %}
+          </div>
+          {% if section.sample_note %}
+          <div class="mt-4 text-[11px] text-on-surface-variant/70">{{ section.sample_note }}.</div>
+          {% endif %}
+
+        {% elif section.key == 'advice' %}
+          <div class="text-xs text-on-surface-variant mb-3">
+            {{ section.call_count }} call{{ '' if section.call_count == 1 else 's' }} &middot;
+            {{ section.verdict_count }} judged
+            {% if section.avg_verdict_score %} &middot; average verdict {{ section.avg_verdict_score }}/10{% endif %}
+          </div>
+          {% if section.calls %}
+          <div class="space-y-1">
+            {% for call in section.calls %}
+            <div class="flex items-center gap-3 text-xs">
+              <span class="font-bold w-16">{{ call.ticker }}</span>
+              <span class="w-16 text-on-surface-variant">{{ call.action }}</span>
+              <span class="text-on-surface-variant/60">{{ call.date }}</span>
+              {% if call.superseded %}<span class="text-[10px] text-on-surface-variant/50">superseded</span>{% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+        {% elif section.key == 'engines' %}
+          {% if section.concerning %}
+          <div class="space-y-2 mb-4">
+            {% for item in section.concerning %}
+            <div class="text-xs">
+              <span class="font-bold text-error">{{ item.engine }}</span>
+              <span class="text-on-surface-variant"> — {{ item.why }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="text-xs text-on-surface-variant mb-4">Nothing is stalled or silently idle.</p>
+          {% endif %}
+          {% if section.reported %}
+          <div class="space-y-1">
+            {% for item in section.reported %}
+            <div class="text-[11px] text-on-surface-variant/70">
+              <span class="font-bold text-on-surface-variant">{{ item.engine }}</span>: {{ item.detail }}
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+        {% elif section.key == 'readiness' %}
+          <p class="text-xs text-on-surface-variant mb-3">
+            {{ section.gaps | length }} input{{ '' if section.gaps | length == 1 else 's' }} still blank,
+            leaving {{ section.dark_capabilities }} capabilit{{ 'y' if section.dark_capabilities == 1 else 'ies' }} switched off.
+          </p>
+          <div class="space-y-2">
+            {% for gap in section.gaps %}
+            <div class="text-xs">
+              <span class="font-bold">{{ gap.label }}</span>
+              {% if gap.cost %}<span class="text-on-surface-variant"> — {{ gap.cost }}</span>{% endif %}
+            </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <p class="text-[10px] text-on-surface-variant/50 text-center pb-8">
+      Generated {{ review.generated_at }}
+    </p>
+  </div>
+</div>
+{% endblock %}

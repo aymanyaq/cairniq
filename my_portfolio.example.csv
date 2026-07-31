@@ -1,0 +1,10 @@
+Symbol,Shares,Purchase Price,Account
+# Example portfolio - replace with your own holdings!
+# Columns: Symbol, Shares, Purchase Price, Account
+#
+# Account types: TFSA, RRSP, 401k, IRA, Taxable, etc.
+#
+AAPL,25,150.00,TFSA
+MSFT,15,300.00,RRSP
+VTI,50,200.00,Taxable
+GOOGL,10,140.00,TFSA

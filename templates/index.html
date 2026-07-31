@@ -1,0 +1,1628 @@
+{% extends "base.html" %}
+
+{% block head %}
+<style>
+/* Specific styles from index.html */
+#chat-history { padding-bottom: 2rem; }
+
+/* Tighten markdown spacing in the side panels */
+#right-panels .markdown-content p { margin-bottom: 0.5rem !important; }
+#right-panels .markdown-content h1,
+#right-panels .markdown-content h2,
+#right-panels .markdown-content h3,
+#right-panels .markdown-content h4 { margin-top: 1rem !important; margin-bottom: 0.25rem !important; }
+#right-panels .markdown-content ul,
+#right-panels .markdown-content ol { margin-bottom: 0.5rem !important; }
+#right-panels .markdown-content hr { margin: 0.75rem 0 !important; }
+
+@media print {
+  /* AI response container (print only) */
+  .bg-surface-container-high {
+    background: #fafafa !important;
+    border: 1px solid #e0e0e0 !important;
+    border-left: 3pt solid #006644 !important;
+    border-radius: 6pt !important;
+    padding: 10pt 14pt !important;
+    box-shadow: none !important;
+  }
+  aside,
+  header,
+  #right-panels,
+  .mt-auto.space-y-3.pb-4,
+  #btn-full-feed,
+  .flex.items-center.gap-2.overflow-x-auto.no-scrollbar.py-1,
+  .copy-msg-btn, .quick-pin-btn,
+  .agent-thinking-log, .trace-content, .toggle-icon,
+  .status-text, .reasoning-pulse,
+  [class*="animate-spin"]
+  {
+    display: none !important;
+  }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  @page { size: letter; margin: 0.75in 0.6in; }
+  html { font-size: 12pt !important; }
+  body { background: #fff !important; color: #1a1a1a !important; font-family: "Inter", "Helvetica Neue", Arial, sans-serif !important; -webkit-font-smoothing: antialiased !important; overflow: visible !important; height: auto !important; display: block !important; line-height: 1.6 !important; }
+  main { padding: 0 !important; margin: 0 !important; overflow: visible !important; height: auto !important; display: block !important; margin-left: 0 !important; }
+  .overflow-hidden.p-6.gap-6 { padding: 0 !important; margin: 0 !important; display: block !important; overflow: visible !important; }
+  #chat-history { display: block !important; width: 100% !important; max-width: 100% !important; max-height: none !important; overflow: visible !important; padding: 0 !important; }
+  #chat-history > div { page-break-inside: avoid; margin-bottom: 1rem !important; }
+  #chat-history::before { content: "CAIRNIQ CONSOLE — CHAT TRANSCRIPT"; display: block; text-align: center; font-family: "Manrope", "Helvetica Neue", sans-serif !important; font-weight: 800; font-size: 14pt; letter-spacing: 0.05em; margin-bottom: 0.4in; padding-bottom: 8pt; border-bottom: 2pt solid #006644; color: #111 !important; }
+  .text-xs { font-size: 8pt !important; }
+  .text-sm { font-size: 9pt !important; }
+  .text-primary { color: #006644 !important; font-size: 7pt !important; font-weight: 800 !important; letter-spacing: 0.15em !important; }
+  .markdown-content, .markdown-content *, .ai-content { color: #1a1a1a !important; font-family: "Inter", "Helvetica Neue", Arial, sans-serif !important; -webkit-font-smoothing: antialiased !important; }
+  .markdown-content { font-size: 10pt !important; line-height: 1.65 !important; }
+  .markdown-content p { color: #1a1a1a !important; margin-bottom: 0.6em !important; orphans: 3; widows: 3; }
+  .markdown-content h1, .markdown-content h2, .markdown-content h3, .markdown-content h4 { color: #111 !important; font-family: "Manrope", "Helvetica Neue", sans-serif !important; font-weight: 700 !important; margin-top: 0.8em !important; margin-bottom: 0.3em !important; page-break-after: avoid; }
+  .markdown-content h1 { font-size: 14pt !important; } .markdown-content h2 { font-size: 12pt !important; } .markdown-content h3 { font-size: 11pt !important; } .markdown-content h4 { font-size: 10.5pt !important; }
+  .markdown-content strong { color: #111 !important; font-weight: 700 !important; }
+  .markdown-content em { color: #333 !important; }
+  .markdown-content ul, .markdown-content ol { color: #1a1a1a !important; padding-left: 1.2em !important; margin-bottom: 0.5em !important; }
+  .markdown-content li { color: #1a1a1a !important; margin-bottom: 0.25em !important; line-height: 1.55 !important; }
+  .markdown-content blockquote { border-left: 3pt solid #006644 !important; padding-left: 10pt !important; color: #333 !important; font-style: italic; margin: 0.5em 0 !important; }
+  .markdown-content table { width: 100% !important; border-collapse: collapse !important; margin: 0.5em 0 !important; font-size: 9pt !important; page-break-inside: avoid; }
+  .markdown-content th { background: #f0f0f0 !important; color: #111 !important; font-weight: 700 !important; padding: 5pt 8pt !important; text-align: left !important; border: 1pt solid #ccc !important; }
+  .markdown-content td { padding: 4pt 8pt !important; border: 1pt solid #ddd !important; color: #1a1a1a !important; }
+  .markdown-content a { color: #004395 !important; text-decoration: underline !important; }
+  .markdown-content img { max-width: 100% !important; height: auto !important; page-break-inside: avoid; }
+  .markdown-content pre, .markdown-content code { font-family: "Menlo", "Monaco", "Courier New", monospace !important; font-size: 8.5pt !important; color: #1a1a1a !important; }
+  .markdown-content pre { background: #f8f8f8 !important; border: 1pt solid #e0e0e0 !important; border-radius: 4pt !important; padding: 8pt !important; white-space: pre-wrap !important; word-break: break-word !important; page-break-inside: avoid; max-width: 100%; margin: 1rem 0; }
+  .markdown-content pre code { background: none; padding: 0; word-break: normal; }
+}
+</style>
+{% endblock %}
+
+{% block sidebar_extra %}
+      <!-- Saved Chat History Section -->
+      <div class="pt-8 pb-2 px-4 flex items-center justify-between shrink-0">
+        <h3 class="text-[10px] uppercase tracking-widest text-[#dae2fd]/30 font-bold">Saved Chats</h3>
+        <button id="btn-new-chat"
+          class="material-symbols-outlined text-[14px] text-primary/60 hover:text-primary transition-colors"
+          title="New Chat">add_circle</button>
+      </div>
+      <div id="saved-chats-list" class="flex-1 min-h-0 space-y-1 overflow-y-auto no-scrollbar">
+        <p class="px-4 py-2 text-[10px] text-[#dae2fd]/20 italic">Loading...</p>
+      </div>
+{% endblock %}
+
+{% block content %}
+    <header
+      class="flex justify-between items-center px-8 h-16 w-full bg-[#131b2e] font-['Manrope'] font-bold uppercase tracking-widest border-b border-[#45464d]/15 z-10">
+      <div class="flex items-center gap-6">
+        <span class="text-xl font-extrabold text-[#dae2fd]">CAIRNIQ // CONSOLE</span>
+
+        <!-- CairnIQ Live-Link: Intelligence Ticker -->
+        <div id="live-reasoning-bar" class="hidden flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-low border border-primary/20 shadow-lg shadow-primary/5 transition-all duration-500">
+          <span class="material-symbols-outlined text-primary text-sm reasoning-pulse">psychology</span>
+          <span id="live-reasoning-text" class="text-[11px] font-medium text-on-surface-variant tracking-wider uppercase">Initializing Intelligence...</span>
+        </div>
+
+        <!-- Run Notices: console output collected during the last agent run -->
+        <div id="run-notices-bar" class="hidden relative">
+          <button id="run-notices-btn" class="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest transition-colors">
+            <span id="run-notices-icon" class="text-xs leading-none"></span>
+            <span id="run-notices-count" class="tabular-nums"></span>
+          </button>
+          <div id="run-notices-popover" class="hidden absolute left-0 top-full mt-2 w-[26rem] max-h-64 overflow-y-auto bg-[#0c1322] border border-outline-variant/30 rounded-xl shadow-2xl z-50 p-3">
+            <div class="flex items-center justify-between mb-2 pb-1.5 border-b border-outline-variant/20">
+              <span class="text-[9px] font-black uppercase tracking-[0.15em] text-on-surface-variant/50">Run Console Output</span>
+              <button id="run-notices-dismiss" class="text-on-surface-variant/40 hover:text-primary transition-colors text-xs leading-none">✕</button>
+            </div>
+            <div id="run-notices-list" class="space-y-0.5 font-mono text-[10px] leading-snug"></div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 ml-2 bg-primary/5 px-2 py-1 rounded-lg border border-primary/10">
+          <button id="btn-export-email" class="p-1 text-primary/40 hover:text-primary transition-colors"
+            title="Email Conversation">
+            <span class="material-symbols-outlined text-[16px]">mail</span>
+          </button>
+          <button id="btn-export-copy" class="p-1 text-primary/40 hover:text-primary transition-colors"
+            title="Copy to Clipboard">
+            <span class="material-symbols-outlined text-[16px]">content_copy</span>
+          </button>
+          <button id="btn-export-print" class="p-1 text-primary/40 hover:text-primary transition-colors"
+            title="Print Conversation">
+            <span class="material-symbols-outlined text-[16px]">print</span>
+          </button>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 mr-4">
+          <div
+            class="flex items-center gap-2 px-3 py-1 bg-surface-container-low border border-outline-variant/20 rounded-lg">
+            <span class="material-symbols-outlined text-sm text-primary" data-icon="payments">payments</span>
+            <span id="session-cost" class="text-[10px] font-bold text-on-surface uppercase tracking-wider">
+              Session: <span class="text-primary">0 tok</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </header>
+    <!-- Main Canvas: Asymmetric Layout -->
+    <div class="flex-1 flex overflow-hidden p-6 gap-6">
+      <!-- Chat Focused Center Column -->
+      <div class="flex-1 flex flex-col gap-4 min-w-0">
+        <!-- Chat Viewport -->
+        <div id="chat-history" class="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar space-y-4 pr-4">
+          <!-- Welcome Message -->
+          <div class="group relative">
+            <div class="flex items-start gap-4">
+              <div
+                class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0">
+                <span class="material-symbols-outlined text-primary text-sm" data-icon="terminal" data-weight="fill"
+                  style="font-variation-settings: 'FILL' 1;">terminal</span>
+              </div>
+              <div class="flex-1 space-y-4">
+                <div class="flex justify-between items-center">
+                  <span class="text-[10px] font-bold tracking-[0.2em] text-primary">SYSTEM ANALYSIS</span>
+                </div>
+                <div class="p-6 rounded-xl bg-surface-container-high border-l-2 border-primary/30">
+                  <p class="text-sm leading-relaxed text-on-surface/90">
+                    CairnIQ is online. I have access to your portfolio, real-time market data,
+                    and analytical tools. What would you like me to analyze?
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Live run pill: a FALLBACK for the in-transcript trace panel, not a
+             second copy of it. It appears only while a run is in flight AND that
+             panel has been scrolled out of view — while the panel is on screen it
+             already says everything this could, so showing both just duplicates
+             the box and eats vertical space. Reduced to what the panel cannot
+             give from off screen: it is still running (spinner) and for how long
+             (elapsed clock, which ticks through the 60s+ silent stretches between
+             status events). The current phase lives in the tooltip; click to jump
+             back to the full trace.
+             The wrapper makes this an OVERLAY: h-0 so the pill never occupies a
+             row of its own, and -mt-4 to cancel the one extra flex gap the
+             wrapper itself adds to the column, so the transcript keeps exactly
+             the height it had. That matters beyond tidiness — a pill that
+             consumed layout would resize the scroll viewport, which changes
+             whether the panel is visible, which toggles the pill: a flicker
+             loop. -->
+        <div class="relative h-0 -mt-4">
+          <button id="run-activity-dock" type="button" title="Working…"
+            class="hidden absolute bottom-2 left-1/2 -translate-x-1/2 z-10 items-center gap-2 pl-2.5 pr-3 py-1 rounded-full bg-surface-container-high/90 backdrop-blur border border-primary/25 shadow-lg hover:border-primary/50 transition-colors">
+            <div class="w-3 h-3 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0"></div>
+            <span id="run-activity-elapsed" class="text-[10px] tabular-nums text-on-surface-variant/60"></span>
+          </button>
+        </div>
+        <!-- Chat Input System -->
+        <div class="mt-auto space-y-3 pb-4">
+          <!-- Quick Actions Bar -->
+          <div class="flex flex-wrap items-center gap-2 overflow-x-auto no-scrollbar py-1">
+            <button id="btn-priority" data-tooltip="Get the single most important rebalancing, cash deployment, or trade action to take today based on current market conditions."
+              class="flex items-center gap-2 px-3 py-1.5 bg-primary/25 hover:bg-primary/35 text-primary border border-primary/45 rounded-lg text-xs font-bold transition-all whitespace-nowrap">
+              <span class="material-symbols-outlined text-sm" data-icon="star" style="font-variation-settings: 'FILL' 1;">star</span>
+              Today's Priority
+            </button>
+            <button id="btn-analyze" data-tooltip="Analyze your portfolio for risks and opportunities."
+              class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low hover:bg-surface-container-highest rounded-lg border border-outline-variant/10 text-xs font-bold text-on-surface/70 hover:text-primary transition-all whitespace-nowrap">
+              <span class="material-symbols-outlined text-sm" data-icon="analytics">analytics</span> Analyze
+            </button>
+            <button id="btn-scan" data-tooltip="Scan the market for high-conviction momentum setups."
+              class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low hover:bg-surface-container-highest rounded-lg border border-outline-variant/10 text-xs font-bold text-on-surface/70 hover:text-primary transition-all whitespace-nowrap">
+              <span class="material-symbols-outlined text-sm" data-icon="radar">radar</span> Scan
+            </button>
+            {% if enable_guru_picks %}
+              <button id="btn-guru" data-tooltip="Scan and analyze the latest media stock picks."
+                class="flex items-center gap-2 px-3 py-1.5 bg-surface-variant/30 hover:bg-primary/20 text-on-surface-variant hover:text-primary rounded-full text-xs font-medium border border-outline/20 hover:border-primary/50 transition-all duration-300">
+                <span class="material-symbols-outlined text-sm" data-icon="live_tv">live_tv</span> Guru Picks
+              </button>
+            {% endif %}
+            <button id="btn-dip" data-tooltip="Build a market-selloff opportunity plan: which quality names to accumulate on weakness, at what levels, with staged cash deployment."
+              class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low hover:bg-surface-container-highest rounded-lg border border-outline-variant/10 text-xs font-bold text-on-surface/70 hover:text-primary transition-all whitespace-nowrap">
+              <span class="material-symbols-outlined text-sm" data-icon="trending_down">trending_down</span> Dip Plan
+            </button>
+            <button id="btn-health" data-tooltip="Check system operational health and portfolio data integrity."
+              class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low hover:bg-surface-container-highest rounded-lg border border-outline-variant/10 text-xs font-bold text-on-surface/70 hover:text-primary transition-all whitespace-nowrap">
+              <span class="material-symbols-outlined text-sm" data-icon="health_and_safety">health_and_safety</span>
+              Health
+            </button>
+            <button id="btn-news" data-tooltip="Summarize the most impactful market events from the last 24 hours."
+              class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low hover:bg-surface-container-highest rounded-lg border border-outline-variant/10 text-xs font-bold text-on-surface/70 hover:text-primary transition-all whitespace-nowrap">
+              <span class="material-symbols-outlined text-sm" data-icon="newspaper">newspaper</span> News
+            </button>
+            <button id="btn-trump" data-tooltip="Analyze Trump posts or news headlines for supply-chain or market impact and trigger-actions."
+              class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low hover:bg-surface-container-highest rounded-lg border border-outline-variant/10 text-xs font-bold text-on-surface/70 hover:text-primary transition-all whitespace-nowrap">
+              <span class="material-symbols-outlined text-sm" data-icon="campaign">campaign</span> Trump Yap
+            </button>
+            <button id="btn-risk" data-tooltip="Calculate your total systemic risk exposure."
+              class="flex items-center gap-2 px-3 py-1.5 bg-surface-container-low hover:bg-surface-container-highest rounded-lg border border-outline-variant/10 text-xs font-bold text-on-surface/70 hover:text-primary transition-all whitespace-nowrap">
+              <span class="material-symbols-outlined text-sm" data-icon="warning">warning</span> Risk
+            </button>
+          </div>
+          <div id="attachment-preview-container" class="hidden flex flex-wrap gap-2 p-2 mb-2 border-b border-outline-variant/10 max-h-32 overflow-y-auto"></div>
+          <!-- Input Box -->
+          <div class="relative group">
+            <textarea id="chat-input"
+              class="w-full bg-surface-container-highest border-none rounded-xl px-6 py-4 pr-36 text-sm text-on-surface placeholder:text-on-surface/30 focus:ring-1 focus:ring-primary/40 resize-none transition-shadow duration-300"
+              placeholder="Describe the analysis or trade you want to perform..." rows="1"></textarea>
+            <div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
+              <input type="file" id="file-input" multiple class="hidden" />
+              <button id="chat-attach" class="p-2 hover:bg-surface-container-highest rounded-lg transition-colors text-primary flex items-center justify-center" title="Attach Files">
+                <span class="material-symbols-outlined text-sm" data-icon="attachment">attachment</span>
+              </button>
+              <button id="toggle-ghost"
+                class="px-1.5 py-1 rounded text-[9px] font-bold tracking-tighter transition-all border border-outline-variant/20 text-on-surface/30 hover:text-on-surface hover:border-amber-400/50 flex items-center gap-1"
+                title="Toggle Ghost Mode (Privacy: No Interest Capture)">
+                <span class="material-symbols-outlined text-[10px]">shield</span>
+                GHOST
+              </button>
+              <button id="toggle-deep"
+                class="px-2 py-1 rounded text-[10px] font-bold tracking-tighter transition-all border border-outline-variant/20 text-on-surface/30 hover:text-on-surface hover:border-primary/50"
+                title="Toggle Deep Analysis Mode">
+                DEEP
+              </button>
+              <button id="chat-submit"
+                class="p-2 bg-primary text-on-primary rounded-lg shadow-lg shadow-primary/20 hover:scale-105 transition-transform flex items-center justify-center">
+                <span class="material-symbols-outlined text-sm">send</span>
+              </button>
+              <button id="chat-stop" style="display:none"
+                class="p-2 bg-error text-on-error rounded-lg shadow-lg shadow-error/20 hover:scale-105 transition-transform flex items-center justify-center">
+                <span class="material-symbols-outlined text-sm">stop_circle</span>
+              </button>
+            </div>
+          </div>
+          <div class="flex justify-between items-center px-2 gap-3">
+            <p class="text-[10px] text-primary/40 italic">Press Enter to execute instantly</p>
+            <!-- Feedback control (roadmap 1.5). Hidden until a turn completes:
+                 there is no interaction to rate before then, and the endpoint
+                 refuses to guess a target rather than rate an unrelated turn. -->
+            <div id="chat-feedback" class="hidden items-center gap-1.5 shrink-0">
+              <span class="text-[9px] uppercase tracking-widest text-on-surface/25">Rate the last answer</span>
+              <button id="btn-feedback-up" type="button" title="Good answer — worth learning from"
+                class="p-1 rounded text-on-surface/30 hover:text-primary hover:bg-primary/10 transition-colors flex items-center">
+                <span class="material-symbols-outlined text-sm" data-icon="thumb_up">thumb_up</span>
+              </button>
+              <button id="btn-feedback-down" type="button" title="Bad answer — tell it what was wrong"
+                class="p-1 rounded text-on-surface/30 hover:text-error hover:bg-error/10 transition-colors flex items-center">
+                <span class="material-symbols-outlined text-sm" data-icon="thumb_down">thumb_down</span>
+              </button>
+              <span id="feedback-ack" class="text-[9px] text-on-surface-variant/50 italic"></span>
+            </div>
+            <p class="text-[9px] text-error/50 uppercase tracking-widest font-bold">Not Financial Advice • Use at your own risk</p>
+          </div>
+        </div>
+      </div>
+      <!-- Drag handle: resize the right intelligence panel (double-click to reset) -->
+      <div id="panel-resizer" title="Drag to resize · double-click to reset"
+        class="w-1.5 shrink-0 -mr-5 self-stretch rounded-full cursor-col-resize bg-white/5 hover:bg-primary/40 transition-colors"></div>
+      <!-- Right Side: Intelligence Panels (High-Density) -->
+      <div id="right-panels" class="w-96 flex flex-col gap-3 shrink-0 overflow-y-auto no-scrollbar min-h-0 transition-all duration-300">
+        <!-- Portfolio-vs-SPX lives on /dashboard, not here: it moves over weeks,
+             while everything in this rail is intraday. The headline return is
+             always on screen in the left sidebar (base.html). -->
+        <!-- Today's Priority Panel: precomputed pre-market by the scheduler
+             (GET /api/priority) so the advisor's morning call renders cold,
+             without a chat turn. Force-refresh regenerates on demand. -->
+        <div id="priority-panel"
+          class="bg-surface-container-high rounded-xl p-2.5 border-t border-white/5 overflow-hidden flex flex-col transition-all duration-300 max-h-[24vh] shrink-0">
+          <div class="flex justify-between items-center mb-1.5 shrink-0">
+            <h3 class="text-xs font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
+              TODAY'S PRIORITY</h3>
+            <div class="flex items-center gap-1">
+              <span id="priority-generated-at" class="text-[9px] text-on-surface/30 font-mono"></span>
+              <button id="btn-priority-reader-open" class="p-1 text-primary/40 hover:text-primary transition-colors hidden" title="Open enlarged reader">
+                <span class="material-symbols-outlined text-[16px]">open_in_full</span>
+              </button>
+              <button id="btn-refresh-priority" class="p-1 text-primary/40 hover:text-primary transition-colors" title="Regenerate (full Deep Reasoning run)">
+                <span class="material-symbols-outlined text-[16px]">refresh</span>
+              </button>
+            </div>
+          </div>
+          <div id="priority-content" class="overflow-y-auto flex-1 pr-1">
+            <div class="flex items-center gap-3 py-2 justify-center">
+              <div class="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+              <p class="text-[10px] text-on-surface/40 italic">Checking for today's brief...</p>
+            </div>
+          </div>
+        </div>
+        <!-- Market Pulse Panel -->
+        <div id="pulse-panel"
+          class="bg-surface-container-high rounded-xl p-2.5 border-t border-white/5 overflow-hidden flex flex-col transition-all duration-300 max-h-[22vh] shrink-0">
+          <div class="flex justify-between items-center mb-1.5 shrink-0">
+            <h3 class="text-xs font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+              MARKET PULSE</h3>
+            <button id="btn-refresh-pulse" class="p-1 text-primary/40 hover:text-primary transition-colors" title="Refresh Pulse">
+              <span class="material-symbols-outlined text-[16px]">refresh</span>
+            </button>
+          </div>
+          <div id="pulse-content" class="space-y-2 overflow-y-auto flex-1 pr-1">
+            <div class="flex items-center gap-3 py-2 justify-center">
+              <div class="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+              <p class="text-[10px] text-on-surface/40 italic">Loading pulse...</p>
+            </div>
+          </div>
+          <button id="btn-full-pulse"
+            class="w-full mt-2 shrink-0 py-1.5 bg-surface-container-low text-[9px] text-on-surface/40 hover:text-primary uppercase tracking-widest font-bold border border-outline-variant/10 rounded-lg transition-colors">
+            Launch Full Pulse
+          </button>
+        </div>
+        <!-- Live Intelligence Feed -->
+        <div id="news-panel"
+          class="flex-1 min-h-[330px] bg-surface-container-high rounded-xl p-3 border-t border-white/5 overflow-hidden flex flex-col transition-all duration-300">
+          <div class="flex justify-between items-center mb-2 shrink-0">
+            <h3 class="text-xs font-bold text-on-surface uppercase tracking-wider flex items-center gap-2"><span
+                class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+              PRIMARY NEWS &amp; EVENT FEED</h3>
+            <div class="flex items-center gap-1">
+              <button id="btn-news-reader-open" class="p-1 text-primary/40 hover:text-primary transition-colors" title="Open enlarged reader">
+                <span class="material-symbols-outlined text-[16px]">open_in_full</span>
+              </button>
+              <button id="btn-refresh-news" class="p-1 text-primary/40 hover:text-primary transition-colors" title="Refresh Feed">
+                <span class="material-symbols-outlined text-[16px]">refresh</span>
+              </button>
+            </div>
+          </div>
+          <!-- Catalyst Engine (Layer 2): ranked, two-lane catalysts from today's news -->
+          <div id="catalyst-section" class="mb-3 pb-3 border-b border-white/5 shrink min-h-[64px] flex flex-col overflow-hidden">
+            <div class="flex justify-between items-center mb-2 shrink-0">
+              <h4 class="text-[10px] font-bold text-amber-400/80 uppercase tracking-wider flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[13px]">bolt</span> Catalysts
+              </h4>
+              <button id="btn-refresh-catalysts" title="Scan today's news for tradable catalysts"
+                class="p-1 text-amber-400/40 hover:text-amber-400 transition-colors">
+                <span class="material-symbols-outlined text-[14px]">refresh</span>
+              </button>
+            </div>
+            <div id="catalyst-items" class="space-y-2 max-h-[10vh] min-h-0 overflow-y-auto no-scrollbar pr-1">
+              <p class="text-[10px] text-on-surface/30 italic">Refresh to scan the latest news for tradable catalysts.</p>
+            </div>
+          </div>
+          <div id="news-feed-items" class="space-y-4 overflow-y-auto flex-1 min-h-[140px] pr-1">
+            <div class="flex items-center gap-3 py-4 justify-center">
+              <div class="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+              <p class="text-xs text-on-surface/40 italic">Loading feed...</p>
+            </div>
+          </div>
+          <button id="btn-full-feed"
+            class="w-full mt-2 shrink-0 py-1.5 bg-surface-container-low text-[10px] text-on-surface/40 hover:text-primary uppercase tracking-widest font-bold border border-outline-variant/10 rounded-lg transition-colors">
+            Launch Full Feed
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- News Reader Modal: enlarged, readable view of the intelligence feed -->
+    <div id="news-reader" class="fixed inset-0 z-50 hidden items-center justify-center p-4 sm:p-8">
+      <div id="news-reader-backdrop" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+      <div class="relative w-full max-w-4xl h-[88vh] bg-surface-container-high border border-outline-variant/20 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 border-b border-white/5 shrink-0">
+          <h3 class="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+            <span id="news-reader-title">PRIMARY NEWS &amp; EVENT FEED</span>
+          </h3>
+          <button id="btn-news-reader-close" class="p-1.5 text-on-surface/40 hover:text-primary transition-colors" title="Close (Esc)">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+        <div id="news-reader-body" class="flex-1 overflow-y-auto px-6 sm:px-10 py-6"></div>
+      </div>
+    </div>
+
+{% endblock %}
+
+{% block scripts %}
+<!-- Hidden element to safelist dynamically added Tailwind classes for CDN -->
+<div class="hidden text-primary border-primary bg-primary/10 shadow-[0_0_10px_rgba(78,222,163,0.3)] text-amber-400 border-amber-400 bg-amber-400/10 shadow-[0_0_10px_rgba(251,191,36,0.3)]"></div>
+
+<script>
+    // HYDRATION SCRIPTS FOR CHAT SIDEBAR
+    // ============================================================
+
+    // 1. Session usage — tokens are the source of truth (accurate for every
+    // model); cost is shown only when a slot has a configured price. When some
+    // usage is unpriced, the cost is prefixed "~" to flag it as partial.
+    function formatTokens(n) {
+        n = n || 0;
+        if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+        if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+        return String(n);
+    }
+    function renderSessionUsage({ tokens = 0, cost = 0, currency = 'CAD', anyUnpriced = false } = {}) {
+        let html = `Session: <span class="text-primary">${formatTokens(tokens)} tok</span>`;
+        if (cost > 0) {
+            html += ` · <span class="text-primary">${anyUnpriced ? '~' : ''}$${cost.toFixed(2)} ${currency}</span>`;
+        }
+        return html;
+    }
+    async function loadSessionCost() {
+        try {
+            const threadId = window._activeThreadId || '';
+            const res = await fetch(`/api/session/cost${threadId ? '?thread_id=' + threadId : ''}`);
+            const data = await res.json();
+            const costSpan = document.getElementById('session-cost');
+            if (costSpan) {
+                costSpan.innerHTML = renderSessionUsage({
+                    tokens: data.tokens, cost: data.cost, currency: data.currency, anyUnpriced: data.any_unpriced,
+                });
+            }
+        } catch (e) { }
+    }
+
+    // 3. Market Pulse
+    function _pulseSectorShort(name) {
+        const m = {
+            'Technology':'Technology','Healthcare':'Healthcare','Financials':'Financials','Energy':'Energy',
+            'Utilities':'Utilities','Consumer Discretionary':'Cons. Disc.','Consumer Staples':'Cons. Staples',
+            'Industrials':'Industrials','Materials':'Materials','Real Estate':'Real Estate',
+            'Communication Services':'Comm. Svcs.'
+        };
+        return m[name] || name;
+    }
+    async function loadPulse(force = false) {
+        const content = document.getElementById('pulse-content');
+        if (!content) return;
+
+        const refreshBtn = document.getElementById('btn-refresh-pulse');
+        if (force && refreshBtn) refreshBtn.querySelector('span').classList.add('animate-spin');
+
+        try {
+            const url = force ? '/api/market-pulse?force=true' : '/api/market-pulse';
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (data.status === 'fetching') {
+                setTimeout(() => loadPulse(false), 3000);
+                return;
+            }
+
+            if (refreshBtn) refreshBtn.querySelector('span').classList.remove('animate-spin');
+
+            if (data.regime) {
+                const snapshot = data.market_snapshot || {};
+                const spy = snapshot.spy || {};
+                const vix = snapshot.vix || {};
+
+                let html = `
+                    <div class="space-y-2">
+                        <!-- Regime & Score: single row so the indices grid and
+                             sector rotation below it clear the panel's cap. -->
+                        <div class="px-2.5 py-1.5 rounded-lg bg-primary/5 border border-primary/10 flex items-center justify-between gap-2">
+                            <div class="flex items-baseline gap-1.5 min-w-0">
+                                <span class="text-lg font-black text-on-surface leading-none">${data.regime_score}</span>
+                                <span class="text-[9px] text-on-surface/40">/100</span>
+                                <span class="text-[10px] font-bold text-primary tracking-widest uppercase truncate">${data.regime}</span>
+                            </div>
+                            <span class="text-[9px] text-on-surface/40 font-mono shrink-0">${data.regime_streak || 0}D</span>
+                        </div>
+
+                        <!-- Core Indices Grid -->
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="p-2 rounded-lg bg-surface-container-low border border-outline-variant/10">
+                                <p class="text-[8px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Fear & Greed</p>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs font-bold text-on-surface">${snapshot.fear_greed_score || '---'}</span>
+                                    <span class="text-[9px] text-primary">${snapshot.fear_greed_label || ''}</span>
+                                </div>
+                            </div>
+                            <div class="p-2 rounded-lg bg-surface-container-low border border-outline-variant/10">
+                                <p class="text-[8px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">VIX (Volatility)</p>
+                                <div class="flex justify-between items-center">
+                                    <span class="text-xs font-bold text-on-surface">${vix.price || '---'}</span>
+                                    <span class="text-[9px] ${vix.price > 25 ? 'text-error' : 'text-primary'}">${(vix.daily_change || 0) > 0 ? '↑' : '↓'}${Math.abs(vix.daily_change || 0)}%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sector Rotation: which sectors are trending up / down -->
+                        ${(() => {
+                            // A sector with no usable number is dropped, not plotted:
+                            // `|| 0` used to render a null as a confident "+0.0%" —
+                            // a return the sector never had.
+                            const sec = (data.sector_trends || [])
+                                .filter(s => Number.isFinite(s.return_1m) && Number.isFinite(s.return_3m))
+                                .sort((a,b) => b.return_1m - a.return_1m);
+                            if (!sec.length) return '';
+                            const up = sec.slice(0, 3);
+                            const down = sec.slice(-3).reverse();
+                            const chip = (s) => {
+                                const r = s.return_1m, r3 = s.return_3m, pos = r >= 0;
+                                return `<div class="flex items-center justify-between gap-2 text-[9px] py-0.5" title="${s.sector}: 1M ${pos?'+':''}${r.toFixed(1)}% · 3M ${r3>=0?'+':''}${r3.toFixed(1)}%">
+                                    <span class="text-on-surface/60 truncate">${_pulseSectorShort(s.sector)}</span>
+                                    <span class="font-bold whitespace-nowrap ${pos?'text-green-400':'text-red-400'}">${pos?'+':''}${r.toFixed(1)}%</span>
+                                </div>`;
+                            };
+                            return `
+                                <div>
+                                    <p class="text-[8px] uppercase tracking-widest text-on-surface-variant font-bold mb-1.5">Sector Rotation · 1M</p>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div class="p-2 rounded-lg bg-surface-container-low border border-outline-variant/10">
+                                            <p class="text-[8px] uppercase tracking-widest text-green-400/70 font-bold mb-1">▲ Leading</p>
+                                            ${up.map(chip).join('')}
+                                        </div>
+                                        <div class="p-2 rounded-lg bg-surface-container-low border border-outline-variant/10">
+                                            <p class="text-[8px] uppercase tracking-widest text-red-400/70 font-bold mb-1">▼ Lagging</p>
+                                            ${down.map(chip).join('')}
+                                        </div>
+                                    </div>
+                                </div>`;
+                        })()}
+
+                        <!-- Recommendation & Flags -->
+                        <div class="space-y-2">
+                            <p class="text-[10px] text-primary font-medium leading-relaxed italic border-l-2 border-primary/30 pl-3">
+                                "${data.recommendation || 'Analyzing market posture...'}"
+                            </p>
+
+                            ${(data.macro_flags || []).map(f => `
+                                <div class="flex items-start gap-2 text-[9px] text-on-surface/50">
+                                    <span class="mt-0.5">•</span>
+                                    <span>${f}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <!-- Portfolio Alerts (tappable: count expands to per-ticker reasons) -->
+                        ${(data.portfolio_alerts && data.portfolio_alerts.length > 0) ? `
+                            <div class="mt-2 rounded-lg bg-error/10 border border-error/20 overflow-hidden">
+                                <button type="button" onclick="
+                                    document.getElementById('pulse-alerts-detail').classList.toggle('hidden');
+                                    this.querySelector('.pulse-alerts-chevron').classList.toggle('rotate-180');
+                                " class="w-full py-1.5 px-3 flex items-center justify-between">
+                                    <span class="text-[9px] font-bold text-error uppercase tracking-widest">Portfolio Alerts</span>
+                                    <div class="flex items-center gap-1">
+                                        <span class="text-[9px] font-black text-error">${data.portfolio_alerts.length} TICKERS</span>
+                                        <span class="material-symbols-outlined pulse-alerts-chevron text-error text-[14px] transition-transform">expand_more</span>
+                                    </div>
+                                </button>
+                                <div id="pulse-alerts-detail" class="hidden px-3 pb-2 pt-1 space-y-1.5">
+                                    ${data.portfolio_alerts.map(a => `
+                                        <div class="flex items-start justify-between gap-3 text-[10px] py-1 border-t border-error/10">
+                                            <span class="font-bold text-on-surface/80 whitespace-nowrap">$${a.symbol}${a.price ? ` <span class="font-normal text-on-surface/40">$${Number(a.price).toFixed(2)}</span>` : ''}</span>
+                                            <span class="text-on-surface/50 text-right">${(a.alerts || []).join(' · ')}</span>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : (data.portfolio_alert_count > 0 ? `
+                            <div class="mt-2 py-1.5 px-3 rounded-lg bg-error/10 border border-error/20 flex items-center justify-between">
+                                <span class="text-[9px] font-bold text-error uppercase tracking-widest">Portfolio Alerts</span>
+                                <span class="text-[9px] font-black text-error">${data.portfolio_alert_count} TICKERS</span>
+                            </div>
+                        ` : '')}
+                    </div>
+                `;
+                content.innerHTML = html;
+            } else {
+                content.innerHTML = '<p class="text-[10px] text-on-surface/30 italic">No pulse data available</p>';
+            }
+        } catch (e) {
+            console.error('Pulse load failed:', e);
+            content.innerHTML = '<p class="text-[10px] text-error">Load failed</p>';
+        }
+    }
+
+    // 4. News Feed
+    // Polling budget: 50 attempts × 4 s = 200 s max.
+    // The backend (api/background.py) runs the full news-analyst pipeline —
+    // a planning LLM call, several web/news tool calls, then a streaming
+    // synthesis call — and only treats a run as dead after 3 min (180 s).
+    // The client budget must exceed that, otherwise it gives up while the
+    // backend is still legitimately working and never receives the result.
+    // Manual Retry always resets the counter to 0 so the user gets the full
+    // window on each click, not just the remainder of the first window.
+    const NEWS_POLL_INTERVAL_MS = 4000;
+    const NEWS_MAX_RETRIES = 50;
+    let _newsRetries = 0;
+    let _newsPollTimer = null;
+    let _newsTabHidden = false; // pause polling when tab is not visible
+    let _lastNewsMarkdown = null; // raw report kept for the enlarged reader modal
+
+    // Pause/resume when tab visibility changes so hidden-tab retries don't
+    // eat up the budget before the user comes back to the page.
+    document.addEventListener('visibilitychange', () => {
+        _newsTabHidden = document.hidden;
+    });
+
+    function _newsSpinner(attempt) {
+        // Inline progress indicator shown in the content area while polling.
+        return `
+          <div class="flex flex-col items-center gap-3 py-6 justify-center">
+            <div class="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+            <p class="text-[10px] text-on-surface/40 italic">
+              Fetching intelligence feed
+              <span class="text-on-surface/25">(${attempt}/${NEWS_MAX_RETRIES})</span>
+            </p>
+          </div>`;
+    }
+
+    function _newsFailed() {
+        const content = document.getElementById('news-feed-items');
+        const refreshBtn = document.getElementById('btn-refresh-news');
+        if (refreshBtn) refreshBtn.querySelector('span').classList.remove('animate-spin');
+        if (content) content.innerHTML = `
+          <div class="flex flex-col items-center gap-2 py-6 text-center">
+            <span class="material-symbols-outlined text-2xl text-on-surface/20">signal_disconnected</span>
+            <p class="text-[10px] text-on-surface/30 italic">Intelligence feed timed out.</p>
+            <button onclick="_newsRetries=0;loadNews(true)"
+              class="text-[10px] text-primary underline cursor-pointer hover:text-primary/70 transition-colors">
+              Retry
+            </button>
+          </div>`;
+    }
+
+    async function loadNews(force = false) {
+        const content = document.getElementById('news-feed-items');
+        if (!content) return;
+
+        // Clear any pending poll before starting a new cycle.
+        if (_newsPollTimer) { clearTimeout(_newsPollTimer); _newsPollTimer = null; }
+
+        const refreshBtn = document.getElementById('btn-refresh-news');
+        if (force) {
+            _newsRetries = 0;
+            if (refreshBtn) refreshBtn.querySelector('span').classList.add('animate-spin');
+            // Show spinner immediately so the panel doesn't look frozen.
+            content.innerHTML = _newsSpinner(0);
+        }
+
+        try {
+            const url = force ? '/api/news-feed?force=true' : '/api/news-feed';
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (data.status === 'fetching') {
+                const attempt = ++_newsRetries;
+                if (attempt <= NEWS_MAX_RETRIES) {
+                    // Update progress indicator every poll.
+                    content.innerHTML = _newsSpinner(attempt);
+                    _newsPollTimer = setTimeout(() => {
+                        // Skip one tick if the tab is hidden; check again next tick.
+                        if (_newsTabHidden) {
+                            _newsPollTimer = setTimeout(() => loadNews(false), NEWS_POLL_INTERVAL_MS);
+                        } else {
+                            loadNews(false);
+                        }
+                    }, NEWS_POLL_INTERVAL_MS);
+                    return;
+                }
+                // Budget exhausted — give up gracefully.
+                _newsRetries = 0;
+                _newsFailed();
+                return;
+            }
+
+            // Success path.
+            if (refreshBtn) refreshBtn.querySelector('span').classList.remove('animate-spin');
+            _newsRetries = 0;
+
+            if (data.markdown) {
+                _lastNewsMarkdown = data.markdown;
+                if (window.marked) {
+                    const html = typeof marked.parse === 'function' ? marked.parse(data.markdown) : marked(data.markdown);
+                    content.innerHTML = `<div class="markdown-content text-[11px] leading-relaxed text-on-surface/70">${html}</div>`;
+                } else {
+                    content.innerHTML = `<pre class="text-[10px] whitespace-pre-wrap text-on-surface/70">${data.markdown}</pre>`;
+                }
+            } else {
+                content.innerHTML = '<p class="text-[10px] text-on-surface/30 italic">No news available at this time.</p>';
+            }
+        } catch (e) {
+            console.error('News load failed:', e);
+            const attempt = ++_newsRetries;
+            if (attempt <= NEWS_MAX_RETRIES) {
+                // Network error — retry same as a 'fetching' response.
+                content.innerHTML = _newsSpinner(attempt);
+                _newsPollTimer = setTimeout(() => loadNews(false), NEWS_POLL_INTERVAL_MS);
+            } else {
+                _newsRetries = 0;
+                _newsFailed();
+            }
+        }
+    }
+
+    // 4a. News Reader Modal — the side panel is too narrow (and its type too
+    // small) to comfortably read the full report, so this re-renders the same
+    // markdown in a large centered overlay at a readable size.
+    function _newsReaderEsc(e) { if (e.key === 'Escape') closeNewsReader(); }
+
+    function openNewsReader() {
+        const modal = document.getElementById('news-reader');
+        const body = document.getElementById('news-reader-body');
+        if (!modal || !body) return;
+
+        const title = document.getElementById('news-reader-title');
+        if (title) title.textContent = 'PRIMARY NEWS & EVENT FEED';
+
+        if (_lastNewsMarkdown && window.marked) {
+            // Drop the leading "[NewsAnalyst]: " agent tag so the report's
+            // "# ..." title parses as a real heading in the reader.
+            const raw = _lastNewsMarkdown.replace(/^\s*\[[\w ]+\]:\s*/, '');
+            const html = typeof marked.parse === 'function' ? marked.parse(raw) : marked(raw);
+            body.innerHTML = `<div class="markdown-content text-[15px] leading-relaxed text-on-surface/80 max-w-3xl mx-auto">${html}</div>`;
+        } else {
+            // Feed not loaded yet — mirror whatever the panel currently shows
+            // (spinner, error state, or plain-text fallback).
+            const panel = document.getElementById('news-feed-items');
+            body.innerHTML = `<div class="max-w-3xl mx-auto text-sm text-on-surface/70">${panel ? panel.innerHTML : ''}</div>`;
+        }
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.addEventListener('keydown', _newsReaderEsc);
+    }
+
+    function closeNewsReader() {
+        const modal = document.getElementById('news-reader');
+        if (!modal) return;
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.removeEventListener('keydown', _newsReaderEsc);
+    }
+
+    // 4a-bis. Today's Priority — precomputed pre-market by the scheduler and
+    // served cold from /api/priority. A plain GET never spends (the run is a
+    // full Deep Reasoning graph pass); only the explicit refresh regenerates.
+    // The poll budget must outlast the backend's 12-min stuck threshold, or
+    // the client gives up while a healthy run is still working.
+    const PRIORITY_POLL_INTERVAL_MS = 8000;
+    const PRIORITY_MAX_RETRIES = 100;
+    let _priorityRetries = 0;
+    let _priorityPollTimer = null;
+    let _lastPriorityMarkdown = null;
+
+    function _prioritySpinner(elapsedSeconds) {
+        const mins = Math.floor((elapsedSeconds || 0) / 60);
+        const secs = (elapsedSeconds || 0) % 60;
+        return `
+          <div class="flex flex-col items-center gap-2 py-3 justify-center">
+            <div class="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+            <p class="text-[10px] text-on-surface/40 italic">
+              Running full Deep Reasoning brief
+              <span class="text-on-surface/25 font-mono">${mins}:${String(secs).padStart(2, '0')}</span>
+            </p>
+          </div>`;
+    }
+
+    function _priorityEmpty() {
+        const content = document.getElementById('priority-content');
+        if (content) content.innerHTML = `
+          <div class="flex flex-col items-center gap-1.5 py-3 text-center">
+            <p class="text-[10px] text-on-surface/30 italic">No brief yet — auto-generates each trading morning.</p>
+            <button onclick="_priorityRetries=0;loadPriority(true)"
+              class="text-[10px] text-primary underline cursor-pointer hover:text-primary/70 transition-colors"
+              title="Runs a full Deep Reasoning pass now">
+              Generate now
+            </button>
+          </div>`;
+    }
+
+    function _priorityFailed() {
+        const content = document.getElementById('priority-content');
+        const refreshBtn = document.getElementById('btn-refresh-priority');
+        if (refreshBtn) refreshBtn.querySelector('span').classList.remove('animate-spin');
+        if (content) content.innerHTML = `
+          <div class="flex flex-col items-center gap-1.5 py-3 text-center">
+            <span class="material-symbols-outlined text-xl text-on-surface/20">signal_disconnected</span>
+            <p class="text-[10px] text-on-surface/30 italic">Priority brief timed out.</p>
+            <button onclick="_priorityRetries=0;loadPriority(true)"
+              class="text-[10px] text-primary underline cursor-pointer hover:text-primary/70 transition-colors">
+              Retry
+            </button>
+          </div>`;
+    }
+
+    async function loadPriority(force = false) {
+        const content = document.getElementById('priority-content');
+        if (!content) return;
+
+        if (_priorityPollTimer) { clearTimeout(_priorityPollTimer); _priorityPollTimer = null; }
+
+        const refreshBtn = document.getElementById('btn-refresh-priority');
+        if (force) {
+            _priorityRetries = 0;
+            if (refreshBtn) refreshBtn.querySelector('span').classList.add('animate-spin');
+            content.innerHTML = _prioritySpinner(0);
+        }
+
+        try {
+            const url = force ? '/api/priority?force=true' : '/api/priority';
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (data.status === 'fetching') {
+                const attempt = ++_priorityRetries;
+                if (attempt <= PRIORITY_MAX_RETRIES) {
+                    content.innerHTML = _prioritySpinner(data.elapsed_seconds);
+                    _priorityPollTimer = setTimeout(() => loadPriority(false), PRIORITY_POLL_INTERVAL_MS);
+                    return;
+                }
+                _priorityRetries = 0;
+                _priorityFailed();
+                return;
+            }
+
+            if (refreshBtn) refreshBtn.querySelector('span').classList.remove('animate-spin');
+            _priorityRetries = 0;
+
+            if (data.status === 'empty' || !data.markdown) {
+                _priorityEmpty();
+                return;
+            }
+
+            _lastPriorityMarkdown = data.markdown;
+            document.getElementById('btn-priority-reader-open')?.classList.remove('hidden');
+
+            const stamp = document.getElementById('priority-generated-at');
+            if (stamp && data.generated_at) {
+                const d = new Date(data.generated_at);
+                stamp.textContent = isNaN(d) ? '' :
+                    d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            if (window.marked) {
+                const html = typeof marked.parse === 'function' ? marked.parse(data.markdown) : marked(data.markdown);
+                content.innerHTML = `<div class="markdown-content text-[11px] leading-relaxed text-on-surface/70">${html}</div>`;
+            } else {
+                content.innerHTML = `<pre class="text-[10px] whitespace-pre-wrap text-on-surface/70">${data.markdown}</pre>`;
+            }
+        } catch (e) {
+            console.error('Priority load failed:', e);
+            const attempt = ++_priorityRetries;
+            if (attempt <= PRIORITY_MAX_RETRIES) {
+                content.innerHTML = _prioritySpinner(0);
+                _priorityPollTimer = setTimeout(() => loadPriority(false), PRIORITY_POLL_INTERVAL_MS);
+            } else {
+                _priorityRetries = 0;
+                _priorityFailed();
+            }
+        }
+    }
+    window.loadPriority = loadPriority; // used by inline retry/generate buttons
+
+    function openPriorityReader() {
+        const modal = document.getElementById('news-reader');
+        const body = document.getElementById('news-reader-body');
+        if (!modal || !body || !_lastPriorityMarkdown) return;
+
+        const title = document.getElementById('news-reader-title');
+        if (title) title.textContent = "TODAY'S PRIORITY";
+
+        if (window.marked) {
+            const raw = _lastPriorityMarkdown.replace(/^\s*\[[\w ]+\]:\s*/, '');
+            const html = typeof marked.parse === 'function' ? marked.parse(raw) : marked(raw);
+            body.innerHTML = `<div class="markdown-content text-[15px] leading-relaxed text-on-surface/80 max-w-3xl mx-auto">${html}</div>`;
+        } else {
+            body.innerHTML = `<pre class="max-w-3xl mx-auto text-sm whitespace-pre-wrap text-on-surface/70">${_lastPriorityMarkdown}</pre>`;
+        }
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.addEventListener('keydown', _newsReaderEsc);
+    }
+
+    // 4b. Catalysts (Catalyst Engine — Layer 2 list + Layer 3 drill-down)
+    const CAT_POLL_INTERVAL_MS = 4000;
+    const CAT_MAX_RETRIES = 50;
+    let _catRetries = 0;
+    let _catPollTimer = null;
+    window._catalysts = [];
+
+    function _catCard(c, idx) {
+        const tickers = (c.entities && c.entities.tickers || []).join(', ');
+        const relMap = { held: '📌 Held', watchlist: '👁 Watch', sector: '🏷 Sector', none: '🌐 Opportunity' };
+        const dirMap = { bullish: '🟢', bearish: '🔴', mixed: '🟡', unclear: '⚪' };
+        const conf = Math.round((c.confidence || 0) * 100);
+        const headline = String(c.headline || '').replace(/</g, '&lt;');
+        return `
+          <div class="p-2 rounded-lg bg-surface-container-low border border-outline-variant/10">
+            <div class="flex items-center gap-1.5 mb-1 text-[9px] text-on-surface/40 uppercase tracking-wide">
+              <span>${dirMap[c.direction_hint] || '⚪'}</span>
+              <span class="font-bold">${String(c.event_type || 'other').replace(/_/g, ' ')}</span>
+              <span class="text-on-surface/25">·</span>
+              <span>${relMap[c.portfolio_relevance] || ''}</span>
+              <span class="text-on-surface/25">·</span>
+              <span>${conf}%</span>
+            </div>
+            <p class="text-[11px] text-on-surface/75 leading-snug mb-1">${headline}</p>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[9px] text-on-surface/35 truncate">${tickers}</span>
+              <span class="flex items-center gap-2 whitespace-nowrap">
+                ${c.scenario_available ? `<button onclick="viewCatalystScenario(${idx})" title="View the auto-generated scenario (already computed — no new analysis cost)"
+                  class="text-[9px] text-amber-400 hover:text-amber-400/70 font-bold transition-colors">⚡ Scenario</button>` : ''}
+                <button onclick="analyzeCatalyst(${idx})"
+                  class="text-[9px] text-primary hover:text-primary/70 font-bold transition-colors">Analyze →</button>
+              </span>
+            </div>
+          </div>`;
+    }
+
+    function _renderCatalysts(data) {
+        const box = document.getElementById('catalyst-items');
+        if (!box) return;
+        const lanes = data.lanes || {};
+        const pi = lanes.portfolio_impact || [];
+        const opp = lanes.opportunity || [];
+        window._catalysts = pi.concat(opp);
+        if (window._catalysts.length === 0) {
+            box.innerHTML = '<p class="text-[10px] text-on-surface/30 italic">No tradable catalysts in the latest scan.</p>';
+            return;
+        }
+        let html = '';
+        let i = 0;
+        if (pi.length) {
+            html += '<p class="text-[9px] font-bold text-on-surface/40 uppercase tracking-widest mb-1">Portfolio Impact</p>';
+            pi.forEach(c => { html += _catCard(c, i++); });
+        }
+        if (opp.length) {
+            html += '<p class="text-[9px] font-bold text-on-surface/40 uppercase tracking-widest mb-1 mt-2">Opportunities</p>';
+            opp.forEach(c => { html += _catCard(c, i++); });
+        }
+        box.innerHTML = html;
+    }
+
+    async function loadCatalysts(force = false) {
+        const box = document.getElementById('catalyst-items');
+        if (!box) return;
+        if (_catPollTimer) { clearTimeout(_catPollTimer); _catPollTimer = null; }
+        const btn = document.getElementById('btn-refresh-catalysts');
+        if (force) {
+            _catRetries = 0;
+            if (btn) btn.querySelector('span').classList.add('animate-spin');
+            box.innerHTML = '<p class="text-[10px] text-on-surface/40 italic">Scanning the latest news for catalysts…</p>';
+        }
+        try {
+            const res = await fetch(force ? '/api/catalysts?force=true' : '/api/catalysts');
+            const data = await res.json();
+            if (data.status === 'fetching') {
+                if (++_catRetries <= CAT_MAX_RETRIES) {
+                    _catPollTimer = setTimeout(() => loadCatalysts(false), CAT_POLL_INTERVAL_MS);
+                    return;
+                }
+                _catRetries = 0;
+                if (btn) btn.querySelector('span').classList.remove('animate-spin');
+                box.innerHTML = '<p class="text-[10px] text-on-surface/30 italic">Catalyst scan timed out. Refresh to retry.</p>';
+                return;
+            }
+            if (btn) btn.querySelector('span').classList.remove('animate-spin');
+            _catRetries = 0;
+            if (data.status === 'empty') {
+                box.innerHTML = '<p class="text-[10px] text-on-surface/30 italic">Refresh to scan the latest news for tradable catalysts.</p>';
+                return;
+            }
+            _renderCatalysts(data);
+        } catch (e) {
+            console.error('Catalyst load failed:', e);
+            if (btn) btn.querySelector('span').classList.remove('animate-spin');
+            box.innerHTML = '<p class="text-[10px] text-on-surface/30 italic">Catalyst load failed.</p>';
+        }
+    }
+
+    // Drill-down: hand a catalyst to the shared Catalyst Engine (Layer 3) via the
+    // [EventScenario source=news] marker — the same engine Trump Yap routes through.
+    function analyzeCatalyst(idx) {
+        const c = (window._catalysts || [])[idx];
+        if (!c) return;
+        const input = document.getElementById('chat-input');
+        if (!input) return;
+        if (window.startNewChatSession) window.startNewChatSession(); else window._activeThreadId = null;
+        const tickers = (c.entities && c.entities.tickers || []).join(', ');
+        const payload = `Event type: ${c.event_type}\nHeadline: ${c.headline}\nSummary: ${c.summary}\nEntities: ${tickers}`;
+        const fullPrompt = `[DeepReasoning] [EventScenario source=news]\n\nINPUT TO ANALYZE:\n"""\n${payload}\n"""`;
+        input.setAttribute('data-full-prompt', fullPrompt);
+        input.value = `Analyze impact: ${String(c.headline || '').substring(0, 50)}…`;
+        if (window.sendMessage) window.sendMessage(); else document.getElementById('chat-submit')?.click();
+    }
+    // Instant view of an auto-escalated scenario (Layer 3 ran in the background and the
+    // markdown is cached server-side) — renders a static bubble, NO new analysis cost.
+    // Falls back to the live drill-down if the cache entry is gone (e.g. pruned).
+    async function viewCatalystScenario(idx) {
+        const c = (window._catalysts || [])[idx];
+        if (!c || !c.id) return;
+        try {
+            const res = await fetch(`/api/catalysts/scenario/${encodeURIComponent(c.id)}`);
+            const data = await res.json();
+            if (data.status !== 'ok' || !data.markdown) { analyzeCatalyst(idx); return; }
+
+            // Open each scenario in its own fresh chat instead of stacking them in one
+            // thread (matches analyzeCatalyst, which also starts a new session).
+            if (window.startNewChatSession) window.startNewChatSession(); else window._activeThreadId = null;
+
+            const history = document.getElementById('chat-history');
+            if (!history) return;
+            const rendered = (window.marked)
+                ? (typeof marked.parse === 'function' ? marked.parse(data.markdown) : marked(data.markdown))
+                : `<pre class="whitespace-pre-wrap">${String(data.markdown).replace(/</g, '&lt;')}</pre>`;
+
+            const bubble = document.createElement('div');
+            bubble.className = 'flex gap-6';
+            bubble.innerHTML = `
+                <div class="w-10 h-10 rounded-xl bg-primary-container border border-primary/20 flex-shrink-0 flex items-center justify-center shadow-lg shadow-primary/5">
+                    <span class="material-symbols-outlined text-primary text-xl">bolt</span>
+                </div>
+                <div class="flex-1 space-y-4">
+                    <div class="flex items-center gap-3">
+                        <span class="font-headline font-extrabold text-xs text-primary uppercase tracking-widest">CairnIQ</span>
+                        <span class="text-[10px] text-amber-400/80 font-bold uppercase tracking-widest">⚡ Auto-Generated Scenario</span>
+                        <span class="text-[10px] text-on-surface-variant/40">${data.generated_at ? new Date(data.generated_at).toLocaleString() : ''}</span>
+                    </div>
+                    <div class="text-on-surface-variant text-base leading-relaxed markdown-content">${rendered}</div>
+                </div>`;
+            history.appendChild(bubble);
+            history.scrollTop = history.scrollHeight;
+        } catch (e) {
+            console.error('Scenario view failed, falling back to live analysis:', e);
+            analyzeCatalyst(idx);
+        }
+    }
+    window.viewCatalystScenario = viewCatalystScenario;
+    window.analyzeCatalyst = analyzeCatalyst;
+    window.loadCatalysts = loadCatalysts;
+
+    // Drag-to-resize the right intelligence panel. Width persists in localStorage;
+    // double-click the handle to reset to the default. Keeps the chat usable (min 360px).
+    function setupPanelResizer() {
+        const resizer = document.getElementById('panel-resizer');
+        const panel = document.getElementById('right-panels');
+        if (!resizer || !panel) return;
+        const MIN = 280, MAX = 760, CHAT_MIN = 360;
+
+        // Largest width that still leaves the chat usable AT THE CURRENT viewport.
+        // Recomputed every time so a width saved on a wide screen can never be
+        // re-applied too big on a narrower one (that squeezed the chat to a sliver
+        // and caused the horizontal overflow / empty space).
+        function maxAllowed() {
+            const row = panel.parentElement;
+            const rowW = row ? row.getBoundingClientRect().width : window.innerWidth;
+            return Math.max(MIN, Math.min(MAX, rowW - CHAT_MIN));
+        }
+        function applyWidth(w) {
+            w = Math.max(MIN, Math.min(maxAllowed(), w));
+            panel.style.width = w + 'px';
+            return w;
+        }
+
+        const saved = parseInt(localStorage.getItem('rightPanelWidth') || '', 10);
+        if (saved) applyWidth(saved);                      // re-clamped to current fit
+
+        let dragging = false;
+        resizer.addEventListener('mousedown', (e) => {
+            dragging = true;
+            panel.style.transition = 'none';               // no lag while dragging
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+            e.preventDefault();
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (!dragging) return;
+            const rect = panel.parentElement.getBoundingClientRect();
+            applyWidth(rect.right - e.clientX);             // panel is right-docked
+        });
+        window.addEventListener('mouseup', () => {
+            if (!dragging) return;
+            dragging = false;
+            panel.style.transition = '';
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            if (panel.style.width) localStorage.setItem('rightPanelWidth', parseInt(panel.style.width, 10));
+            // The chat column (flex-1) reflows text live, but content that caches its
+            // pixel size at render time (charts/plots/tables, now or later) won't re-fit
+            // on its own — dragging the panel isn't a window resize. Nudge a re-fit.
+            nudgeChatReflow();
+        });
+        // Shrink a too-wide panel back into bounds when the window narrows.
+        window.addEventListener('resize', () => {
+            if (panel.style.width) applyWidth(parseInt(panel.style.width, 10));
+        });
+        resizer.addEventListener('dblclick', () => {        // reset to default (w-96)
+            panel.style.width = '';
+            localStorage.removeItem('rightPanelWidth');
+            nudgeChatReflow();
+        });
+    }
+
+    // Force already-rendered chat content to re-fit the new width after a resize.
+    // Text reflows for free (flex), but Plotly/vis/canvas-style embeds cache pixel
+    // dimensions and only re-layout on a window 'resize'. Coalesced via rAF so a fast
+    // drag-release fires it once. Also tells the panel re-clamp listener to re-check.
+    let _reflowRAF = null;
+    function nudgeChatReflow() {
+        if (_reflowRAF) cancelAnimationFrame(_reflowRAF);
+        _reflowRAF = requestAnimationFrame(() => {
+            _reflowRAF = null;
+            window.dispatchEvent(new Event('resize'));
+        });
+    }
+    window.nudgeChatReflow = nudgeChatReflow;
+    window.setupPanelResizer = setupPanelResizer;
+
+    // 5. Saved Chats
+    async function loadSavedChats() {
+        const list = document.getElementById('saved-chats-list');
+        if (!list) return;
+        try {
+            const res = await fetch('/api/chats');
+            const data = await res.json();
+            const sessions = data.sessions || [];
+            if (sessions.length > 0) {
+                list.innerHTML = sessions.map(s => {
+                    const date = new Date(s.timestamp);
+                    const timeStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    return `
+                    <div class="group flex items-center gap-1 px-2">
+                        <button onclick="loadChatSession('${s.session_id}')"
+                            class="flex-1 text-left px-2 py-2 text-[10px] text-[#dae2fd]/60 hover:text-[#dae2fd] hover:bg-[#2d3449] rounded-lg transition-colors truncate"
+                            title="${(s.title || '').replace(/"/g, '&quot;')}">
+                            <span class="block truncate">${s.title || 'Untitled'}</span>
+                            <span class="text-[8px] text-[#dae2fd]/20 flex items-center gap-2 mt-0.5">
+                                ${timeStr} · ${s.message_count} msgs · $${(s.session_cost_cad || 0).toFixed(2)}
+                            </span>
+                        </button>
+                        <button onclick="deleteChatSession('${s.session_id}')"
+                            class="opacity-0 group-hover:opacity-100 p-1 text-[#dae2fd]/20 hover:text-error transition-all"
+                            title="Delete">
+                            <span class="material-symbols-outlined text-[12px]">close</span>
+                        </button>
+                    </div>`;
+                }).join('');
+            } else {
+                list.innerHTML = '<p class="px-4 py-2 text-[10px] text-[#dae2fd]/20 italic">No saved chats</p>';
+            }
+        } catch (e) {
+            console.error('Failed to load chats:', e);
+            list.innerHTML = '<p class="px-4 py-2 text-[10px] text-error/40 italic">Load failed</p>';
+        }
+    }
+
+    // Load a saved chat session into the viewport
+    window.loadChatSession = async function(sessionId) {
+        const history = document.getElementById('chat-history');
+        if (!history) return;
+
+        try {
+            const res = await fetch(`/api/chats/${sessionId}`);
+            const data = await res.json();
+            if (data.error) return;
+
+            // Clear current chat
+            history.innerHTML = '';
+
+            // Render each message
+            (data.messages || []).forEach(msg => {
+                const div = document.createElement('div');
+                if (msg.role === 'user') {
+                    div.className = 'flex gap-6 flex-row-reverse';
+                    div.innerHTML = `
+                        <div class="w-10 h-10 rounded-xl bg-surface-variant border border-outline-variant/30 flex-shrink-0 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-on-surface-variant text-xl">person</span>
+                        </div>
+                        <div class="flex-1 flex flex-col items-end">
+                            <div class="bg-surface-container-high border border-outline-variant/20 px-6 py-4 rounded-2xl rounded-tr-none max-w-xl shadow-xl">
+                                <p class="text-on-surface text-[15px] leading-relaxed font-medium whitespace-pre-wrap break-words">${msg.content.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+                            </div>
+                        </div>`;
+                } else {
+                    div.className = 'flex gap-6';
+                    let rendered = (typeof marked !== 'undefined') ? marked.parse(msg.content) : msg.content;
+                    if (typeof rendered === 'string') {
+                        rendered = rendered.replace(/<p>\s*<\/p>/g, '');
+                    }
+                    div.innerHTML = `
+                        <div class="w-10 h-10 rounded-xl bg-primary-container border border-primary/20 flex-shrink-0 flex items-center justify-center shadow-lg shadow-primary/5">
+                            <span class="material-symbols-outlined text-primary text-xl">account_tree</span>
+                        </div>
+                        <div class="flex-1 space-y-4">
+                            <div class="flex items-center gap-3">
+                                <span class="font-headline font-extrabold text-xs text-primary uppercase tracking-widest">CairnIQ</span>
+                            </div>
+                            <div class="text-on-surface-variant text-base leading-relaxed markdown-content">${rendered}</div>
+                        </div>`;
+                }
+                history.appendChild(div);
+            });
+
+            // Store the thread_id so new messages continue this session, then
+            // refresh the usage display (tokens + optional cost) for this thread.
+            window._activeThreadId = sessionId;
+            loadSessionCost();
+
+            // Scroll to bottom
+            history.scrollTop = history.scrollHeight;
+        } catch (e) {
+            console.error('Failed to load session:', e);
+        }
+    };
+
+    window.startNewChatSession = function() {
+        const history = document.getElementById('chat-history');
+        if (history) {
+            history.innerHTML = `
+              <div class="group relative">
+                <div class="flex items-start gap-4">
+                  <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0">
+                    <span class="material-symbols-outlined text-primary text-sm" data-icon="terminal" data-weight="fill" style="font-variation-settings: 'FILL' 1;">terminal</span>
+                  </div>
+                  <div class="flex-1 space-y-4">
+                    <div class="flex justify-between items-center">
+                      <span class="text-[10px] font-bold tracking-[0.2em] text-primary">SYSTEM ANALYSIS</span>
+                    </div>
+                    <div class="p-6 rounded-xl bg-surface-container-high border-l-2 border-primary/30">
+                      <p class="text-sm leading-relaxed text-on-surface/90">
+                        CairnIQ is online. I have access to your portfolio, real-time market data,
+                        and analytical tools. What would you like me to analyze?
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>`;
+            history.scrollTop = history.scrollHeight;
+        }
+
+        window._activeThreadId = null;
+        if (typeof window.resetChatComposer === 'function') {
+            window.resetChatComposer();
+        }
+
+        const costSpan = document.getElementById('session-cost');
+        if (costSpan) {
+            costSpan.innerHTML = 'Session: <span class="text-primary">0 tok</span>';
+        }
+    };
+
+    window.loadSavedChats = loadSavedChats;
+    window.loadSessionCost = loadSessionCost;
+
+    // Delete a saved chat session
+    window.deleteChatSession = async function(sessionId) {
+        try {
+            await fetch(`/api/chats/${sessionId}`, { method: 'DELETE' });
+            loadSavedChats(); // Refresh list
+        } catch (e) {
+            console.error('Failed to delete session:', e);
+        }
+    };
+
+    // 6. Export / Quick Actions
+    function setupQuickActions() {
+        const input = document.getElementById('chat-input');
+        const submit = document.getElementById('chat-submit');
+
+        // Full prompts for backend
+        const actions = {
+            'btn-priority': '[DeepReasoning] [QuickAction name=priority]',
+            'btn-analyze': '[MarketAnalyst lens=portfolio_audit] Audit my current holdings for uncompensated risk. Use assess_portfolio_risk, check_portfolio_allocation, analyze_fx_risks, check_portfolio_correlation, and get_market_pulse_data. Lead with the single biggest dollar-at-risk finding across my actual holdings. Do not surface external screen picks unless cash is above my band — and even then, one suggestion max.',
+            'btn-scan': '[MarketAnalyst lens=external_screen] Find new external tickers worth attention right now. Use screen_stocks, scan_opportunities, and check_sector_rotation. Lead with the single highest-conviction external pick and explain why now, not why ever. Include a one-line portfolio-fit note per pick (held / watchlist / sector-gap / overlap). Do not produce a full portfolio audit or sector allocation tables.',
+            {% if enable_guru_picks %}
+            'btn-guru': '[MarketAnalyst lens=guru_validation] Validate which Media Guru picks survived the opportunity pipeline. Use scan_guru_picks. Show count_cleared / count_scanned, then for each cleared pick list the guru source, signal, freshness, pipeline status, and foundation/headwind result. Do not include picks that failed the pipeline as if they passed. Do not produce a portfolio audit.',
+            {% endif %}
+            'btn-dip': '[MarketAnalyst lens=market_dip] Build an opportunistic capital-deployment plan for a market selloff. First assess the current drawdown (VIX, breadth, SPY/index drawdown, Fear & Greed) and whether we are in dip-buying territory yet. Then build a ranked shopping list of HIGH-QUALITY names worth accumulating on weakness — drawing from my watchlist AND broad oversold-quality screens (use get_market_pulse_data, screen_stocks/scan_opportunities, and run_technical_analysis) — each with an entry zone, a structural stop anchored to support / 40-week MA / ATR, and a staged buy trigger (start level + add-if-it-drops-further level). Quote my available cash from get_my_portfolio and split it into 2-3 deployment tranches, stating each tranche\'s size and dollar-at-risk to its stop. Exclude falling knives (broken thesis, not a dip) and explain why. Lead with how deep the dip is and the single highest-conviction name to accumulate.',
+            'btn-health': 'Check system health and portfolio integrity.',
+            'btn-news': '[NewsAnalyst] Summarize the most impactful market events from the last 24 hours.',
+            // Trump Yap routes through the shared Catalyst Engine (Layer 3). The
+            // bespoke prompt now lives server-side (agent/catalyst_engine.py, source
+            // "trump") so this button + the News drill-down + future "Yap" sources all
+            // run one engine. The button name/icon/tooltip + display label are unchanged.
+            'btn-trump': '[DeepReasoning] [EventScenario source=trump]',
+            'btn-risk': '[RiskManager] Calculate my total systemic risk exposure.'
+        };
+
+        // Short display labels for UI (what user sees in the input box)
+        const displayLabels = {
+            'btn-priority': '[DeepReasoning] What\'s my top priority action today?',
+            'btn-analyze': 'Audit my portfolio for uncompensated risk.',
+            'btn-scan': 'Find new external tickers worth attention.',
+            {% if enable_guru_picks %}
+            'btn-guru': 'Validate the latest Media Guru picks through the pipeline.',
+            {% endif %}
+            'btn-dip': 'Build a market-dip deployment plan: what quality names to accumulate, at what levels.',
+            'btn-health': 'Check system health and portfolio integrity.',
+            'btn-news': '[NewsAnalyst] Summarize the most impactful market events from the last 24 hours.',
+            'btn-trump': '[DeepReasoning] Analyze Trump\'s latest social & policy impact.',
+            'btn-risk': '[RiskManager] Calculate my total systemic risk exposure.'
+        };
+
+        Object.entries(actions).forEach(([id, text]) => {
+            document.getElementById(id)?.addEventListener('click', () => {
+                if (input) {
+                    const currentInput = input.value.trim();
+                    if (window.startNewChatSession) {
+                        window.startNewChatSession();
+                    } else {
+                        window._activeThreadId = null;
+                    }
+
+                    let finalPrompt = text;
+                    let displayText = displayLabels[id] || text;
+                    
+                    if (id === 'btn-priority') {
+                        if (currentInput && currentInput.length < 15) {
+                            finalPrompt = text + `\n\nFOCUS: Apply the full framework above specifically to the ticker ${currentInput}. Is acting on ${currentInput} today the single highest-priority action given current holdings and market conditions?`;
+                            displayText = `[DeepReasoning] Priority action for ${currentInput}?`;
+                        }
+                    }
+                    
+                    if (id === 'btn-trump') {
+                        if (currentInput) {
+                            finalPrompt = text + `\n\nINPUT TO ANALYZE:\n"""\n${currentInput}\n"""`;
+                            displayText = `[DeepReasoning] Analyze social/news impact of: "${currentInput.substring(0, 40)}${currentInput.length > 40 ? '...' : ''}"`;
+                        }
+                    }
+                    
+                    // Store the full prompt in a data attribute for sending
+                    input.setAttribute('data-full-prompt', finalPrompt);
+                    // Show the short version to the user
+                    input.value = displayText;
+                    
+                    if (window.sendMessage) {
+                        window.sendMessage();
+                    } else {
+                        submit?.click();
+                    }
+                }
+            });
+        });
+    }
+
+    function setupTooltips() {
+        const tooltipEl = document.createElement('div');
+        tooltipEl.style.position = 'fixed';
+        tooltipEl.style.background = 'rgba(19, 27, 46, 0.95)';
+        tooltipEl.style.color = '#dae2fd';
+        tooltipEl.style.padding = '8px 12px';
+        tooltipEl.style.borderRadius = '8px';
+        tooltipEl.style.fontSize = '11px';
+        tooltipEl.style.fontWeight = '500';
+        tooltipEl.style.lineHeight = '1.4';
+        tooltipEl.style.border = '1px solid rgba(218, 226, 253, 0.15)';
+        tooltipEl.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.6)';
+        tooltipEl.style.pointerEvents = 'none';
+        tooltipEl.style.opacity = '0';
+        tooltipEl.style.transition = 'opacity 0.12s cubic-bezier(0.4, 0, 0.2, 1), transform 0.12s cubic-bezier(0.4, 0, 0.2, 1)';
+        tooltipEl.style.transform = 'translateY(4px)';
+        tooltipEl.style.zIndex = '9999';
+        tooltipEl.style.maxWidth = '250px';
+        tooltipEl.style.backdropFilter = 'blur(6px)';
+        tooltipEl.style.textAlign = 'center';
+        document.body.appendChild(tooltipEl);
+
+        document.querySelectorAll('[data-tooltip]').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                const text = el.getAttribute('data-tooltip');
+                tooltipEl.textContent = text;
+                tooltipEl.style.opacity = '1';
+                tooltipEl.style.transform = 'translateY(0)';
+                
+                const rect = el.getBoundingClientRect();
+                // Measure tooltip dimensions after setting content
+                const tooltipRect = tooltipEl.getBoundingClientRect();
+                
+                const top = rect.top - tooltipRect.height - 8;
+                const left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+                
+                tooltipEl.style.top = `${Math.max(8, top)}px`;
+                tooltipEl.style.left = `${Math.max(8, Math.min(window.innerWidth - tooltipRect.width - 8, left))}px`;
+            });
+            
+            el.addEventListener('mouseleave', () => {
+                tooltipEl.style.opacity = '0';
+                tooltipEl.style.transform = 'translateY(4px)';
+            });
+        });
+    }
+
+    function setupExportTools() {
+        function getFormattedChatLog() {
+            const history = document.getElementById('chat-history');
+            if (!history) return '';
+
+            let log = 'CAIRNIQ CONSOLE - TRANSCRIPT\n============================\n\n';
+            const children = history.children;
+
+            for (let i = 0; i < children.length; i++) {
+                const block = children[i];
+
+                // User message
+                if (block.classList.contains('flex-row-reverse')) {
+                    const text = block.querySelector('.bg-surface-container-high p')?.innerText || '';
+                    if (text) log += `[USER]: ${text}\n\n`;
+                }
+                // AI / System message
+                else if (block.classList.contains('flex')) {
+                    // Check if it's the welcome message
+                    if (block.querySelector('span[data-icon="terminal"]')) {
+                        const text = block.querySelector('.bg-surface-container-high p')?.innerText || '';
+                        if (text) log += `[SYSTEM]: ${text}\n\n`;
+                    } else {
+                        const text = block.querySelector('.markdown-content')?.innerText || '';
+                        if (text) log += `[CAIRNIQ]:\n${text}\n\n----------------------------------------\n\n`;
+                    }
+                }
+            }
+            return log;
+        }
+
+        // Copy to Clipboard
+        document.getElementById('btn-export-copy')?.addEventListener('click', () => {
+            const text = getFormattedChatLog();
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    cairnModal.show({ title: 'Export Successful', message: 'Formatted conversation copied to clipboard.', type: 'alert', icon: 'content_copy' });
+                });
+            }
+        });
+
+        // Email (mailto)
+        document.getElementById('btn-export-email')?.addEventListener('click', () => {
+            let text = getFormattedChatLog();
+            if (text) {
+                // mailto: links fail if the URL is too long (usually around 2000 chars limit in browsers/OS)
+                const MAX_CHARS = 1500;
+                if (text.length > MAX_CHARS) {
+                    text = text.substring(0, MAX_CHARS) + '\n\n... [Transcript truncated due to email client limits. Use the "Copy" button in the app to get the full transcript.]';
+                }
+                const body = encodeURIComponent(text);
+                const subject = encodeURIComponent('CairnIQ Analysis Report');
+                window.location.href = `mailto:?subject=${subject}&body=${body}`;
+            }
+        });
+
+        // Print
+        document.getElementById('btn-export-print')?.addEventListener('click', () => {
+            window.print();
+        });
+
+        // New Chat
+        document.getElementById('btn-new-chat')?.addEventListener('click', () => {
+            if (window.startNewChatSession) {
+                window.startNewChatSession();
+            } else {
+                window.location.href = '/';
+            }
+        });
+    }
+
+    // ============================================================
+    // TURN FEEDBACK (roadmap 1.5)
+    // The store this writes to was dark for 4.5 months because nothing could
+    // rate a turn. The backend captures every non-ghost turn at finalize; these
+    // two buttons are the only thing that turns a capture into a rated example,
+    // which is what get_high_quality_interactions actually selects on.
+    // ============================================================
+    function setupTurnFeedback() {
+        const bar = document.getElementById('chat-feedback');
+        const upBtn = document.getElementById('btn-feedback-up');
+        const downBtn = document.getElementById('btn-feedback-down');
+        const ack = document.getElementById('feedback-ack');
+        if (!bar || !upBtn || !downBtn || !ack) return;
+
+        function setAck(text, tone) {
+            ack.textContent = text || '';
+            ack.className = "text-[9px] italic " + (tone === 'error' ? 'text-error/60' : 'text-primary/60');
+        }
+
+        function setRated(rating) {
+            upBtn.classList.toggle('text-primary', rating >= 4);
+            downBtn.classList.toggle('text-error', rating <= 2);
+            upBtn.disabled = downBtn.disabled = true;
+            upBtn.classList.add('pointer-events-none');
+            downBtn.classList.add('pointer-events-none');
+        }
+
+        function reset() {
+            upBtn.disabled = downBtn.disabled = false;
+            upBtn.classList.remove('text-primary', 'pointer-events-none');
+            downBtn.classList.remove('text-error', 'pointer-events-none');
+            setAck('');
+            bar.classList.remove('hidden');
+            bar.classList.add('flex');
+        }
+
+        async function submit(rating) {
+            const payload = { rating: rating, thread_id: window._activeThreadId || null };
+            if (rating <= 2) {
+                // A thumbs-down with no words says the answer was bad, not what
+                // the rule should be. The comment is optional, but it is the
+                // ONLY thing that can draft a corrective lesson — nothing is
+                // invented from an empty box.
+                const comment = await cairnModal.show({
+                    title: 'What was wrong?',
+                    message: 'Optional. Anything you write here is drafted as a corrective instruction for you to confirm on the Context page — it is not applied until you do.',
+                    type: 'prompt',
+                    placeholder: 'e.g. Quoted a stale price as if it were live',
+                    icon: 'thumb_down',
+                    color: 'error',
+                    confirmText: 'Send'
+                });
+                if (comment === null) return;   // cancelled — record nothing
+                if (comment) payload.comment = comment;
+            }
+            setAck('Sending...');
+            try {
+                const res = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    setAck(data.error || 'Could not record feedback', 'error');
+                    return;
+                }
+                setRated(rating);
+                setAck(data.drafted_lesson ? 'Recorded — correction drafted for your confirmation' : 'Recorded');
+            } catch (e) {
+                setAck('Could not record feedback', 'error');
+            }
+        }
+
+        upBtn.addEventListener('click', () => submit(5));
+        downBtn.addEventListener('click', () => submit(1));
+
+        // chat.js fires this once a turn has streamed to completion, which is
+        // also when the backend has finished capturing the interaction.
+        document.addEventListener('cairniq:turn-complete', reset);
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        setupTurnFeedback();
+        loadSessionCost();
+        loadPriority(); // cached-only read — never starts a run by itself
+        loadPulse();
+        loadNews();
+        loadCatalysts(false); // render cached catalysts only — a scan runs only on explicit refresh
+        loadSavedChats();
+        setupQuickActions();
+        setupTooltips();
+        setupExportTools();
+        setupPanelResizer();
+
+        document.getElementById('btn-refresh-pulse')?.addEventListener('click', () => loadPulse(true));
+        document.getElementById('btn-refresh-priority')?.addEventListener('click', () => loadPriority(true));
+        document.getElementById('btn-priority-reader-open')?.addEventListener('click', openPriorityReader);
+        document.getElementById('btn-refresh-news')?.addEventListener('click', () => loadNews(true));
+        document.getElementById('btn-refresh-catalysts')?.addEventListener('click', () => loadCatalysts(true));
+
+        function toggleExpand(panelId, btnId, originalLabel) {
+            const container = document.getElementById('right-panels');
+            const panel = document.getElementById(panelId);
+            const btn = document.getElementById(btnId);
+
+            if (panel.classList.contains('expanded')) {
+                panel.classList.remove('expanded');
+                container.classList.remove('has-expanded');
+                btn.innerText = originalLabel;
+                btn.classList.replace('bg-primary/20', 'bg-surface-container-low');
+                btn.classList.replace('text-primary', 'text-on-surface/40');
+            } else {
+                panel.classList.add('expanded');
+                container.classList.add('has-expanded');
+                btn.innerText = 'Minimize View';
+                btn.classList.replace('bg-surface-container-low', 'bg-primary/20');
+                btn.classList.replace('text-on-surface/40', 'text-primary');
+            }
+        }
+
+        document.getElementById('btn-full-pulse')?.addEventListener('click', () => {
+            toggleExpand('pulse-panel', 'btn-full-pulse', 'Launch Full Pulse');
+        });
+
+        document.getElementById('btn-full-feed')?.addEventListener('click', () => {
+            toggleExpand('news-panel', 'btn-full-feed', 'Launch Full Feed');
+        });
+
+        // News reader modal (enlarged view)
+        document.getElementById('btn-news-reader-open')?.addEventListener('click', openNewsReader);
+        document.getElementById('btn-news-reader-close')?.addEventListener('click', closeNewsReader);
+        document.getElementById('news-reader-backdrop')?.addEventListener('click', closeNewsReader);
+    });
+</script>
+
+<style>
+    /* Panel Expansion Logic */
+    #right-panels.has-expanded > div:not(.expanded) {
+      display: none;
+    }
+    .expanded {
+      flex: 1 !important;
+      max-height: 100% !important;
+    }
+</style>
+{% endblock %}

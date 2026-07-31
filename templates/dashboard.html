@@ -1,0 +1,753 @@
+{% extends "base.html" %}
+
+{# Chart.js lives here rather than in base.html: this is the only page that
+   draws charts. The scripts block below runs at the end of <body>, so the
+   library is loaded well before `new Chart(` is reached. #}
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+
+    <!-- Top Bar (TopNavBar) -->
+    <header
+      class="flex justify-between items-center px-8 h-16 w-full bg-[#131b2e] font-['Manrope'] font-bold uppercase tracking-widest border-b border-[#45464d]/15 z-10">
+      <div class="flex items-center gap-6">
+        <span class="text-xl font-extrabold text-[#dae2fd]">CAIRNIQ // DASHBOARD</span>
+      </div>
+    </header>
+    <!-- Dashboard Master Grid -->
+    <div class="flex-1 overflow-y-auto no-scrollbar p-6">
+      <div class="grid grid-cols-12 gap-4 pb-4">
+        <!-- Main Portfolio Chart (8 cols) -->
+        <div
+          class="col-span-12 lg:col-span-8 bg-surface-container-high rounded-xl p-4 border-t border-white/5 flex flex-col min-h-[300px]">
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <h3 class="text-xs font-bold text-on-surface uppercase tracking-wider">Portfolio Performance</h3>
+              <p class="text-[9px] text-on-surface/40">Growth vs Benchmark</p>
+            </div>
+            <span id="benchmark-return" class="text-base font-black text-primary">--</span>
+          </div>
+          <div class="flex-1 relative w-full h-[200px]">
+            <canvas id="benchmarkChart" style="display: block; width: 100%; height: 100%;"></canvas>
+            <div id="benchmarkChartLoading" class="absolute inset-0 flex items-center justify-center opacity-20">
+              <div class="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Asset Allocation Doughnut (4 cols) -->
+        <div
+          class="col-span-12 lg:col-span-4 bg-surface-container-high rounded-xl p-4 border-t border-white/5 flex flex-col">
+          <h3 class="text-xs font-bold text-on-surface uppercase tracking-wider mb-2">Asset Allocation</h3>
+          <div class="flex-1 relative w-full flex items-center justify-center min-h-[220px]">
+            <canvas id="allocationChart" style="display: block;"></canvas>
+            <div id="allocationChartLoading" class="absolute inset-0 flex items-center justify-center opacity-20">
+              <div class="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Goal Tracking (full width) — Roadmap 4.5 slice 4.
+             The only panel here on a decade scale: everything else on this page
+             answers "how are we doing", this answers "are we on track". It stays
+             deliberately empty until the goal is entered on /context — a
+             projection against an assumed target would be the one number a
+             decade of decisions gets anchored to. -->
+        <div class="col-span-12 bg-surface-container-high rounded-xl p-4 border-t border-white/5">
+          <div class="flex justify-between items-center mb-3">
+            <div>
+              <h3 class="text-xs font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-[#845ec2]"></span>
+                GOAL TRACKING</h3>
+              <p id="goal-subtitle" class="text-[9px] text-on-surface/40">Projected path vs target</p>
+            </div>
+            <span id="goal-assumptions" class="text-[9px] text-on-surface/30 font-mono text-right"></span>
+          </div>
+          <div id="goal-content">
+            <div class="flex items-center gap-3 py-6 justify-center">
+              <div class="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+              <p class="text-xs text-on-surface/40 italic">Loading goal projection...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Market Pulse (full width) -->
+        <div class="col-span-12 bg-surface-container-high rounded-xl p-4 border-t border-white/5">
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="text-xs font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
+              <span id="dash-pulse-dot" class="w-2 h-2 rounded-full bg-amber-400"></span>
+              MARKET PULSE</h3>
+            <button id="dash-btn-refresh-pulse" class="p-1 text-primary/40 hover:text-primary transition-colors" title="Refresh Pulse">
+              <span class="material-symbols-outlined text-[16px]">refresh</span>
+            </button>
+          </div>
+          <div id="dash-pulse-content">
+            <div class="flex items-center gap-3 py-4 justify-center">
+              <div class="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+              <p class="text-xs text-on-surface/40 italic">Loading pulse...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Movers (6 cols) -->
+        <div class="col-span-12 lg:col-span-6 bg-surface-container-high rounded-xl p-4 border-t border-white/5">
+          <h3 class="text-xs font-bold text-on-surface uppercase tracking-wider mb-2">Top Performers</h3>
+          <div id="dashboard-winners" class="space-y-3">
+            <p class="text-[10px] text-on-surface/40 italic">Loading top performers...</p>
+          </div>
+        </div>
+
+        <!-- Account Liquidity / Summary (6 cols) -->
+        <div class="col-span-12 lg:col-span-6 bg-surface-container-high rounded-xl p-4 border-t border-white/5">
+          <h3 class="text-xs font-bold text-on-surface uppercase tracking-wider mb-2">Portfolio Summary</h3>
+          <div id="dashboard-summary" class="grid grid-cols-2 gap-4">
+            <p class="text-[10px] text-on-surface/40 italic">Loading summary...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+{% endblock %}
+{% block scripts %}
+
+
+  <script>
+    // ============================================================
+    // DASHBOARD DATA HYDRATION
+    // ============================================================
+    let allocationChartInstance = null;
+
+    async function loadDashboardData() {
+      try {
+        const res = await fetch('/api/dashboard-data');
+        const data = await res.json();
+
+        // Always hide the spinner first — even on error paths below
+        const loader = document.getElementById('allocationChartLoading');
+        if (loader) loader.style.display = 'none';
+
+        if (data.error) {
+          console.error('Error fetching dashboard data:', data.error);
+          const allocCanvas = document.getElementById('allocationChart');
+          if (allocCanvas) allocCanvas.style.display = 'none';
+          const allocParent = allocCanvas && allocCanvas.parentElement;
+          if (allocParent && !allocParent.querySelector('.alloc-empty-msg')) {
+            const msg = document.createElement('p');
+            msg.className = 'alloc-empty-msg text-[10px] text-on-surface/30 italic text-center w-full';
+            msg.textContent = 'Unable to load portfolio data.';
+            allocParent.appendChild(msg);
+          }
+          return;
+        }
+
+        // 1. Asset Allocation Chart
+        const allocLabels = data.allocation && data.allocation.labels;
+        const allocValues = data.allocation && data.allocation.values;
+
+        const ctxAllocation = document.getElementById('allocationChart').getContext('2d');
+        if (allocationChartInstance) {
+          allocationChartInstance.destroy();
+        }
+
+        // Empty portfolio — show a friendly placeholder instead of a blank chart
+        if (!allocLabels || allocLabels.length === 0) {
+          document.getElementById('allocationChart').style.display = 'none';
+          const allocParent = document.getElementById('allocationChart').parentElement;
+          if (allocParent && !allocParent.querySelector('.alloc-empty-msg')) {
+            const msg = document.createElement('p');
+            msg.className = 'alloc-empty-msg text-[10px] text-on-surface/30 italic text-center w-full';
+            msg.textContent = 'Add holdings to see allocation.';
+            allocParent.appendChild(msg);
+          }
+        } else {
+
+        Chart.defaults.color = '#dae2fd40';
+        Chart.defaults.font.family = "'Manrope', sans-serif";
+
+        // Colors for doughnut
+        const bgColors = ['#4edea3', '#0566d9', '#ffb347', '#ff6b6b', '#845ec2', '#00c9a7', '#93000a'];
+
+        allocationChartInstance = new Chart(ctxAllocation, {
+          type: 'doughnut',
+          data: {
+            labels: allocLabels,
+            datasets: [{
+              data: allocValues,
+              backgroundColor: bgColors,
+              borderWidth: 0,
+              hoverOffset: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '75%',
+            plugins: {
+              legend: { position: 'bottom', labels: { boxWidth: 8, boxHeight: 8, padding: 6, font: { size: 9 }, usePointStyle: true, pointStyle: 'circle' } },
+              tooltip: { backgroundColor: '#0b1326', titleColor: '#dae2fd', bodyColor: '#dae2fd', borderColor: '#4edea350', borderWidth: 1 }
+            }
+          }
+        }); // end Chart
+        } // end else (has allocLabels)
+
+        // 2. Top Performers
+        const winnersDiv = document.getElementById('dashboard-winners');
+        winnersDiv.innerHTML = '';
+        data.top_winners.forEach(winner => {
+          const parts = winner.split(':');
+          winnersDiv.innerHTML += `
+                    <div class="flex justify-between items-center bg-surface-container rounded-lg p-2">
+                        <span class="text-[10px] font-bold font-['Manrope'] tracking-wider">${parts[0]}</span>
+                        <span class="text-[10px] text-primary font-bold bg-primary/10 px-2 py-1 rounded">${parts[1]}</span>
+                    </div>
+                `;
+        });
+        if (data.top_winners.length === 0) winnersDiv.innerHTML = '<p class="text-xs text-on-surface/40 italic">No positive performers found.</p>';
+
+        // 3. Summary stats
+        const summaryDiv = document.getElementById('dashboard-summary');
+        const summary = data.summary;
+        const liquidity = data.liquidity || {};
+        summaryDiv.innerHTML = `
+                <div class="bg-surface-container rounded-lg p-3">
+                    <p class="text-[9px] text-on-surface/40 uppercase tracking-widest mb-1">Total Value (CAD)</p>
+                    <p class="text-lg font-black text-[#dae2fd]">${summary.current_value}</p>
+                </div>
+                <div class="bg-surface-container rounded-lg p-3">
+                    <p class="text-[9px] text-on-surface/40 uppercase tracking-widest mb-1">Total Return</p>
+                    <p class="text-lg font-black ${summary.total_gain_loss && summary.total_gain_loss.includes('+') ? 'text-primary' : 'text-error'}">${summary.total_return}</p>
+                </div>
+                <div class="bg-surface-container rounded-lg p-3">
+                    <p class="text-[9px] text-on-surface/40 uppercase tracking-widest mb-1">Total Gain/Loss</p>
+                    <p class="text-xs font-bold ${summary.total_gain_loss && summary.total_gain_loss.includes('+') ? 'text-primary' : 'text-error'}">${summary.total_gain_loss}</p>
+                </div>
+                <div class="bg-surface-container rounded-lg p-3">
+                    <p class="text-[9px] text-on-surface/40 uppercase tracking-widest mb-1">Liquid Cash (CAD)</p>
+                    <p class="text-lg font-black text-[#4edea3]">${liquidity.total_liquid_cash || '$0.00 CAD'}</p>
+                </div>
+                <div class="bg-surface-container rounded-lg p-3 border border-white/5">
+                    <p class="text-[9px] text-on-surface/40 uppercase tracking-widest mb-1">Positions</p>
+                    <p class="text-xs font-bold text-[#dae2fd]">${summary.number_of_positions} Active Holdings</p>
+                </div>
+                <div class="bg-surface-container rounded-lg p-3 border border-white/5">
+                    <p class="text-[9px] text-on-surface/40 uppercase tracking-widest mb-1">Pension Value (CAD)</p>
+                    <p class="text-xs font-bold text-on-surface/60">${liquidity.locked_pension_value || '$0.00 CAD'}</p>
+                </div>
+            `;
+
+      } catch (e) {
+        // Always dismiss the spinner even if the fetch/parse/render threw
+        const loaderOnErr = document.getElementById('allocationChartLoading');
+        if (loaderOnErr) loaderOnErr.style.display = 'none';
+        const allocCanvas = document.getElementById('allocationChart');
+        if (allocCanvas) allocCanvas.style.display = 'none';
+        const allocParent = allocCanvas && allocCanvas.parentElement;
+        if (allocParent && !allocParent.querySelector('.alloc-empty-msg')) {
+          const msg = document.createElement('p');
+          msg.className = 'alloc-empty-msg text-[10px] text-on-surface/30 italic text-center w-full';
+          msg.textContent = 'Portfolio data unavailable.';
+          allocParent.appendChild(msg);
+        }
+        console.error('Data load failed:', e);
+      }
+    }
+
+
+    // ============================================================
+    // BENCHMARK PANEL HYDRATION (Chart.js)
+    // ============================================================
+    let benchmarkChartInstance = null;
+
+    async function loadBenchmark() {
+      try {
+        const res = await fetch('/api/benchmark');
+        const data = await res.json();
+
+        const loader = document.getElementById('benchmarkChartLoading');
+        if (loader) loader.style.display = 'none';
+
+        // Update return labels
+        document.getElementById('benchmark-return').textContent = data.portfolio_return || '—';
+
+        const pPoints = data.portfolio_points || [];
+        const sPoints = data.spy_points || [];
+        if (pPoints.length === 0) {
+          document.getElementById('benchmarkChart').style.display = 'none';
+          return;
+        }
+
+        const labels = pPoints.map(p => p.date.substring(5)); // Format as MM-DD
+        const portfolioData = pPoints.map(p => p.norm_return_pct);
+        const spyData = sPoints.map(p => p.norm_return_pct || 0);
+
+        const ctx = document.getElementById('benchmarkChart').getContext('2d');
+
+        if (benchmarkChartInstance) {
+          benchmarkChartInstance.destroy();
+        }
+
+        benchmarkChartInstance = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Portfolio Growth',
+                data: portfolioData,
+                borderColor: '#4edea3',
+                backgroundColor: '#4edea315',
+                borderWidth: 2,
+                tension: 0.3,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                fill: true
+              },
+              {
+                label: 'S&P 500 Growth',
+                data: spyData,
+                borderColor: '#ffb347',
+                backgroundColor: 'transparent',
+                borderWidth: 1.5,
+                borderDash: [5, 5],
+                tension: 0.3,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                fill: false
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: '#0b1326',
+                titleColor: '#dae2fd',
+                bodyColor: '#dae2fd',
+                borderColor: '#4edea350',
+                borderWidth: 1,
+                callbacks: {
+                  label: function (context) {
+                    return context.dataset.label + ': ' + context.parsed.y.toFixed(2) + '%';
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { display: false, drawBorder: false },
+                ticks: { maxTicksLimit: 10, font: { size: 10 } }
+              },
+              y: {
+                grid: { color: '#ffffff05', drawBorder: false },
+                ticks: {
+                  maxTicksLimit: 6,
+                  font: { size: 10 },
+                  callback: function (value) { return value + '%'; }
+                }
+              }
+            }
+          }
+        });
+
+      } catch (e) {
+        console.error('Benchmark load failed:', e);
+      }
+    }
+
+    async function loadSessionCost() {
+      try {
+        const res = await fetch('/api/session/cost');
+        const data = await res.json();
+        const costSpan = document.getElementById('session-cost');
+        // Tokens always; cost only when priced (prefixed "~" if partly unpriced).
+        const t = data.tokens || 0;
+        const tokStr = t >= 1e6 ? (t / 1e6).toFixed(2) + 'M' : t >= 1e3 ? (t / 1e3).toFixed(1) + 'K' : String(t);
+        let html = `Session: <span class="text-primary">${tokStr} tok</span>`;
+        const c = (data.cost != null ? data.cost : data.cost_cad) || 0;
+        if (c > 0) {
+          html += ` · <span class="text-primary">${data.any_unpriced ? '~' : ''}$${c.toFixed(2)} ${data.currency || 'CAD'}</span>`;
+        }
+        costSpan.innerHTML = html;
+      } catch (e) { }
+    }
+
+    // ============================================================
+    // DASHBOARD MARKET PULSE
+    // ============================================================
+    let _dashPulseRetries = 0;
+    const _dashPulseMaxRetries = 20;
+
+    function _rc(regime) {
+      const m = {CRISIS:'#ef4444',FEAR:'#f97316',CAUTIOUS:'#eab308',NEUTRAL:'#94a3b8',BULLISH:'#22c55e',EUPHORIA:'#3b82f6'};
+      return m[regime]||'#94a3b8';
+    }
+    function _re(regime) {
+      const m = {CRISIS:'🔴',FEAR:'🟠',CAUTIOUS:'🟡',NEUTRAL:'⚪',BULLISH:'🟢',EUPHORIA:'🔵'};
+      return m[regime]||'⚪';
+    }
+    function _sectorShort(name) {
+      const m = {
+        'Technology':'Technology','Healthcare':'Healthcare','Financials':'Financials','Energy':'Energy',
+        'Utilities':'Utilities','Consumer Discretionary':'Cons. Disc.','Consumer Staples':'Cons. Staples',
+        'Industrials':'Industrials','Materials':'Materials','Real Estate':'Real Estate',
+        'Communication Services':'Comm. Svcs.'
+      };
+      return m[name] || name;
+    }
+    function _sectorTint(pct) {
+      // Green = up, red = down; opacity scales with magnitude (capped ~8%). Near-flat = neutral.
+      if (Math.abs(pct) < 0.5) return { bg:'rgba(148,163,184,0.08)', fg:'rgba(203,213,225,.75)' };
+      const mag = Math.min(Math.abs(pct)/8, 1);
+      if (pct > 0) return { bg:`rgba(34,197,94,${0.08+mag*0.22})`, fg:'#4ade80' };
+      return { bg:`rgba(239,68,68,${0.08+mag*0.22})`, fg:'#f87171' };
+    }
+
+    function _dashSparkline(history) {
+      if (!history || history.length < 2) return '';
+      const scores = history.map(h => h.score || 50);
+      const mn = Math.min(...scores)-5, mx = Math.max(...scores)+5, rng = mx-mn||1;
+      const w=300,h=35,sx=w/(scores.length-1);
+      let p='';
+      scores.forEach((s,i) => { const x=i*sx,y=h-((s-mn)/rng)*h; p+=(i===0?`M${x},${y}`:` L${x},${y}`); });
+      const ls=scores[scores.length-1];
+      const lc=ls<=15?'#ef4444':ls<=30?'#f97316':ls<=40?'#eab308':ls<=60?'#94a3b8':ls<=80?'#22c55e':'#3b82f6';
+      return `<svg viewBox="0 0 ${w} ${h}" class="w-full h-10"><path d="${p}" fill="none" stroke="${lc}" stroke-width="1.5" stroke-linecap="round"/><circle cx="${(scores.length-1)*sx}" cy="${h-((ls-mn)/rng)*h}" r="3" fill="${lc}"/></svg>`;
+    }
+
+    function _renderDashPulse(data) {
+      const c = document.getElementById('dash-pulse-content');
+      if (!c) return;
+      const regime = data.regime||'NEUTRAL', color = _rc(regime), emoji = _re(regime);
+      const snap = data.market_snapshot||{}, spy=snap.spy||{}, qqq=snap.qqq||{}, iwm=snap.iwm||{}, vix=snap.vix||{};
+      const fg=snap.fear_greed_score||50, fgLabel=snap.fear_greed_label||'Neutral';
+      const alerts=data.portfolio_alerts||[], opps=data.opportunities||[], flags=data.macro_flags||[];
+      const history=data.regime_history||[], rec=data.recommendation||'', streak=data.regime_streak||1;
+
+      let html = `<div class="grid grid-cols-12 gap-4">`;
+
+      // Left: Regime + Numbers (4 cols)
+      html += `<div class="col-span-12 lg:col-span-3 space-y-3">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">${emoji}</span>
+          <div>
+            <p class="text-base font-black tracking-tight" style="color:${color}">${regime}</p>
+            <p class="text-[9px] text-on-surface/30">Day ${streak} · Score ${data.regime_score||50}</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="bg-surface-container rounded-lg px-2 py-1.5 text-center">
+            <p class="text-[8px] text-on-surface/30 uppercase tracking-widest">SPY</p>
+            <p class="text-xs font-bold ${(spy.daily_change||0)>=0?'text-green-400':'text-red-400'}">${(spy.daily_change||0)>=0?'+':''}${(spy.daily_change||0).toFixed(1)}%</p>
+          </div>
+          <div class="bg-surface-container rounded-lg px-2 py-1.5 text-center">
+            <p class="text-[8px] text-on-surface/30 uppercase tracking-widest">VIX</p>
+            <p class="text-xs font-bold text-on-surface/80">${(vix.price||0).toFixed(1)}</p>
+          </div>
+          <div class="bg-surface-container rounded-lg px-2 py-1.5 text-center">
+            <p class="text-[8px] text-on-surface/30 uppercase tracking-widest">Fear & Greed</p>
+            <p class="text-xs font-bold text-on-surface/80">${fg} <span class="text-[8px] text-on-surface/40">${fgLabel}</span></p>
+          </div>
+          <div class="bg-surface-container rounded-lg px-2 py-1.5 text-center">
+            <p class="text-[8px] text-on-surface/30 uppercase tracking-widest">Drawdown</p>
+            <p class="text-xs font-bold ${(spy.drawdown_from_high||0)<-5?'text-red-400':'text-on-surface/80'}">${(spy.drawdown_from_high||0).toFixed(1)}%</p>
+          </div>
+        </div>`;
+      if (flags.length > 0) {
+        html += `<div class="space-y-0.5 mt-2">`;
+        flags.forEach(f => { html += `<p class="text-[10px] text-on-surface/50 leading-tight">${f}</p>`; });
+        html += `</div>`;
+      }
+      html += `</div>`;
+
+      // Middle: Opportunities + Alerts (5 cols)
+      html += `<div class="col-span-12 lg:col-span-5 space-y-3">`;
+      if (opps.length > 0) {
+        html += `<div><p class="text-[9px] uppercase tracking-widest text-primary/70 font-bold mb-2">Top Opportunities</p><div class="space-y-1.5">`;
+        opps.slice(0,6).forEach(o => {
+          html += `<div class="flex items-center justify-between text-[11px] bg-surface-container rounded-lg px-3 py-1.5">
+            <div class="flex items-center gap-2"><span class="font-bold text-on-surface/90">${o.symbol}</span><span class="text-primary/50 text-[9px]">${o.score}pt</span></div>
+            <span class="text-on-surface/40 text-[9px]">${(o.reasons||[]).slice(0,3).join(' · ')}</span>
+          </div>`;
+        });
+        html += `</div></div>`;
+      }
+      if (alerts.length > 0) {
+        html += `<div><p class="text-[9px] uppercase tracking-widest text-amber-400/70 font-bold mb-2">Portfolio Alerts</p><div class="space-y-1.5">`;
+        alerts.slice(0,5).forEach(a => {
+          html += `<div class="flex items-center justify-between text-[11px] bg-surface-container rounded-lg px-3 py-1.5">
+            <span class="font-bold text-on-surface/80">${a.symbol}</span>
+            <span class="text-on-surface/40 text-[9px]">${a.alerts.join(' · ')}</span>
+          </div>`;
+        });
+        html += `</div></div>`;
+      }
+      if (opps.length === 0 && alerts.length === 0) {
+        html += `<p class="text-xs text-on-surface/30 italic py-4">No notable signals today.</p>`;
+      }
+      html += `</div>`;
+
+      // Right: Sparkline + Recommendation (4 cols)
+      html += `<div class="col-span-12 lg:col-span-4 space-y-3">`;
+      if (history.length >= 2) {
+        html += `<div><p class="text-[9px] uppercase tracking-widest text-on-surface/20 font-bold mb-1">30-Day Regime Trajectory</p>${_dashSparkline(history)}</div>`;
+      }
+      if (rec) {
+        html += `<p class="text-[10px] text-on-surface/50 leading-relaxed italic border-l-2 pl-3" style="border-color:${color}">${rec}</p>`;
+      }
+      // Index returns row
+      html += `<div class="grid grid-cols-3 gap-2 mt-1">
+        <div class="text-center"><p class="text-[8px] text-on-surface/20">QQQ 1M</p><p class="text-[10px] font-bold ${(qqq.month_return||0)>=0?'text-green-400':'text-red-400'}">${(qqq.month_return||0)>=0?'+':''}${(qqq.month_return||0).toFixed(1)}%</p></div>
+        <div class="text-center"><p class="text-[8px] text-on-surface/20">IWM 1M</p><p class="text-[10px] font-bold ${(iwm.month_return||0)>=0?'text-green-400':'text-red-400'}">${(iwm.month_return||0)>=0?'+':''}${(iwm.month_return||0).toFixed(1)}%</p></div>
+        <div class="text-center"><p class="text-[8px] text-on-surface/20">SPY 1M</p><p class="text-[10px] font-bold ${(spy.month_return||0)>=0?'text-green-400':'text-red-400'}">${(spy.month_return||0)>=0?'+':''}${(spy.month_return||0).toFixed(1)}%</p></div>
+      </div>`;
+      html += `</div>`;
+
+      html += `</div>`;
+
+      // Sector Rotation heatmap — which sectors are trending up / down (1-month)
+      // A sector with no usable number is dropped, not plotted: `|| 0` used to
+      // render a null as a confident "+0.0%" — a return the sector never had.
+      const sectors = (data.sector_trends || [])
+        .filter(s => Number.isFinite(s.return_1m) && Number.isFinite(s.return_3m))
+        .sort((a,b) => b.return_1m - a.return_1m);
+      if (sectors.length) {
+        html += `<div class="mt-4 pt-4 border-t border-outline-variant/10">
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-[9px] uppercase tracking-widest text-on-surface/40 font-bold">Sector Rotation · 1-Month Trend</p>
+            <p class="text-[8px] text-on-surface/30">▲ inflow · ▼ outflow (momentum)</p>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-1.5">`;
+        sectors.forEach(s => {
+          const r1 = s.return_1m, r3 = s.return_3m, tint = _sectorTint(r1);
+          const flowIcon = s.flow === 'inflow' ? '▲' : s.flow === 'outflow' ? '▼' : '·';
+          const flowColor = s.flow === 'inflow' ? '#4ade80' : s.flow === 'outflow' ? '#f87171' : 'rgba(148,163,184,.5)';
+          html += `<div class="rounded-lg px-2 py-1.5 border border-white/5" style="background:${tint.bg}" title="${s.sector} (${s.symbol}) · ${s.character||''}">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-[10px] font-bold text-on-surface/80 truncate">${_sectorShort(s.sector)}</span>
+              <span class="text-[10px] font-black leading-none" style="color:${flowColor}">${flowIcon}</span>
+            </div>
+            <div class="flex items-baseline justify-between gap-1 mt-0.5">
+              <span class="text-sm font-black leading-none" style="color:${tint.fg}">${r1>=0?'+':''}${r1.toFixed(1)}%</span>
+              <span class="text-[8px] text-on-surface/30 whitespace-nowrap">3M ${r3>=0?'+':''}${r3.toFixed(1)}%</span>
+            </div>
+          </div>`;
+        });
+        html += `</div></div>`;
+      }
+
+      c.innerHTML = html;
+    }
+
+    async function loadDashPulse(force = false) {
+      const container = document.getElementById('dash-pulse-content');
+      const refreshBtn = document.getElementById('dash-btn-refresh-pulse');
+      if (force) { _dashPulseRetries = 0; if (refreshBtn) refreshBtn.querySelector('span').classList.add('animate-spin'); }
+      try {
+        const url = force ? '/api/market-pulse?force=true' : '/api/market-pulse';
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data.status === 'fetching') {
+          _dashPulseRetries++;
+          if (_dashPulseRetries >= _dashPulseMaxRetries) {
+            if (refreshBtn) refreshBtn.querySelector('span').classList.remove('animate-spin');
+            container.innerHTML = `<div class="text-center py-4"><p class="text-xs text-on-surface/40 mb-2">Pulse generation taking too long.</p><button onclick="_dashPulseRetries=0; loadDashPulse(true)" class="text-[10px] text-primary font-bold uppercase tracking-widest hover:underline">Retry</button></div>`;
+            return;
+          }
+          container.innerHTML = `<div class="flex items-center gap-3 py-4 justify-center"><div class="w-4 h-4 rounded-full border-2 border-amber-400 border-t-transparent animate-spin"></div><p class="text-xs text-amber-400/60 italic">Scanning market… (${_dashPulseRetries}/${_dashPulseMaxRetries})</p></div>`;
+          setTimeout(() => loadDashPulse(false), 5000);
+          return;
+        }
+        _dashPulseRetries = 0;
+        if (refreshBtn) refreshBtn.querySelector('span').classList.remove('animate-spin');
+        if (data.regime) {
+          _renderDashPulse(data);
+          const dot = document.getElementById('dash-pulse-dot');
+          if (dot) dot.style.background = _rc(data.regime);
+        } else {
+          container.innerHTML = '<p class="text-xs text-on-surface/30 italic">No pulse data available</p>';
+        }
+      } catch (e) {
+        console.error('Dashboard pulse load failed:', e);
+        if (refreshBtn) refreshBtn.querySelector('span').classList.remove('animate-spin');
+        container.innerHTML = `<div class="text-center py-4"><p class="text-xs text-on-surface/40 mb-2">Could not load pulse.</p><button onclick="_dashPulseRetries=0; loadDashPulse();" class="text-[10px] text-primary hover:underline">Retry</button></div>`;
+      }
+    }
+
+    const dashRefreshPulse = document.getElementById('dash-btn-refresh-pulse');
+    if (dashRefreshPulse) {
+      dashRefreshPulse.addEventListener('click', () => loadDashPulse(true));
+    }
+
+    // ============================================================
+    // GOAL TRACKING PANEL (Roadmap 4.5 slice 4)
+    // ============================================================
+    // Renders GET /api/goal_projection. The endpoint answers `available:false`
+    // with a `missing` list whenever the goal, its contribution, or the portfolio
+    // value is unset; this panel shows THAT, naming the field and linking to the
+    // form, rather than drawing a chart of a plan nobody stated.
+    let goalChartInstance = null;
+
+    function _goalMoney(value, currency) {
+      if (value == null) return '—';
+      const abs = Math.abs(value);
+      const short = abs >= 1e6 ? (value / 1e6).toFixed(2) + 'M'
+                  : abs >= 1e3 ? (value / 1e3).toFixed(0) + 'K'
+                  : value.toFixed(0);
+      return '$' + short + (currency ? ' ' + currency : '');
+    }
+
+    function _goalPct(rate) {
+      return rate == null ? '—' : (rate * 100).toFixed(1) + '%';
+    }
+
+    function _goalTile(label, value, tone) {
+      return `<div class="bg-surface-container rounded-lg p-3">
+        <p class="text-[9px] text-on-surface/40 uppercase tracking-widest mb-1">${label}</p>
+        <p class="text-lg font-black ${tone || 'text-[#dae2fd]'}">${value}</p>
+      </div>`;
+    }
+
+    function renderGoalUnavailable(data) {
+      const missing = (data.missing || []).join(', ');
+      const needsValue = (data.missing || []).indexOf('current_value') !== -1;
+      const action = needsValue
+        ? '<a href="/portfolio" class="text-primary hover:underline">Add holdings</a> to project against a real balance.'
+        : `Set it under <a href="/context" class="text-primary hover:underline">Context &rsaquo; Wealth Goal</a>.`;
+      document.getElementById('goal-content').innerHTML = `
+        <div class="py-6 text-center">
+          <p class="text-xs text-on-surface/60 mb-1">No projection yet — ${data.reason || 'goal not set'}.</p>
+          ${missing ? `<p class="text-[10px] text-on-surface/40 mb-2">Needed: <span class="font-mono text-on-surface/60">${missing}</span></p>` : ''}
+          <p class="text-[10px] text-on-surface/40">${action}</p>
+          <p class="text-[9px] text-on-surface/25 mt-3 max-w-md mx-auto">Nothing is assumed on your behalf: no target, horizon, or contribution is filled in for you, so this panel stays blank rather than projecting a plan you did not state.</p>
+        </div>`;
+    }
+
+    function renderGoalProjection(d) {
+      const cur = d.currency;
+      const goal = d.goal || {};
+      const realized = d.realized_annual_return || {};
+      const req = d.required_annual_return || {};
+
+      document.getElementById('goal-subtitle').textContent =
+        `${_goalMoney(d.current_value, cur)} today → ${_goalMoney(goal.target_low, cur)}`
+        + (goal.target_high ? ` / ${_goalMoney(goal.target_high, cur)}` : '')
+        + ` over ${d.horizon_years}y, funding ${_goalMoney(d.annual_contribution, cur)}/yr`;
+
+      const a = d.assumptions || {};
+      document.getElementById('goal-assumptions').innerHTML =
+        `${a.risk_profile || 'unset'} · μ ${_goalPct(a.mean_return)} σ ${_goalPct(a.volatility)}<br>${a.num_simulations} sims`;
+
+      // Goal-funded probability is the headline. It is NOT success_rate: that one
+      // only asks whether a path stayed solvent, and a portfolio can be 100%
+      // solvent while funding 0% of the goal. Both are shown so they cannot be
+      // read as the same number.
+      const funded = d.goal_success_rate;
+      const fundedTone = funded == null ? 'text-[#dae2fd]'
+                       : funded >= 70 ? 'text-primary'
+                       : funded >= 40 ? 'text-amber-400' : 'text-error';
+
+      document.getElementById('goal-content').innerHTML = `
+        <div class="grid grid-cols-12 gap-4">
+          <div class="col-span-12 lg:col-span-8 relative w-full h-[240px]">
+            <canvas id="goalChart" style="display:block; width:100%; height:100%;"></canvas>
+          </div>
+          <div class="col-span-12 lg:col-span-4 grid grid-cols-2 gap-3 content-start">
+            ${_goalTile('Goal Funded', funded == null ? '—' : funded.toFixed(1) + '%', fundedTone)}
+            ${_goalTile('Stays Solvent', d.success_rate == null ? '—' : d.success_rate.toFixed(1) + '%', 'text-on-surface/60')}
+            ${_goalTile('Required Return', _goalPct(req.low), 'text-[#dae2fd]')}
+            ${_goalTile('Stretch Requires', _goalPct(req.high), 'text-on-surface/60')}
+            ${_goalTile('Median Outcome', _goalMoney(d.median_result, cur), 'text-[#dae2fd]')}
+            ${_goalTile('Early-Crash Solvency', d.stress_test_success_rate == null ? '—' : d.stress_test_success_rate.toFixed(1) + '%', 'text-on-surface/60')}
+            <div class="col-span-2 bg-surface-container rounded-lg p-3">
+              <p class="text-[9px] text-on-surface/40 uppercase tracking-widest mb-1">Realized Return</p>
+              <p class="text-xs font-bold text-on-surface/50 italic">Not shown yet</p>
+              <ul class="mt-1 space-y-0.5">
+                ${(realized.blockers || []).map(b => `<li class="text-[9px] text-on-surface/30 leading-snug">• ${b}</li>`).join('')}
+              </ul>
+            </div>
+          </div>
+        </div>`;
+
+      const bands = d.bands || {};
+      const years = bands.years || [];
+      if (!years.length) return;
+
+      const targetLow = goal.target_low ? years.map(() => goal.target_low) : null;
+      const targetHigh = goal.target_high ? years.map(() => goal.target_high) : null;
+
+      const datasets = [
+        { label: '90th percentile', data: bands.p90, borderColor: '#4edea300', backgroundColor: '#845ec225',
+          fill: '+1', pointRadius: 0, borderWidth: 0, tension: 0.3 },
+        { label: '10th percentile', data: bands.p10, borderColor: '#4edea300', backgroundColor: 'transparent',
+          fill: false, pointRadius: 0, borderWidth: 0, tension: 0.3 },
+        { label: 'Median path', data: bands.p50, borderColor: '#845ec2', backgroundColor: 'transparent',
+          fill: false, pointRadius: 0, borderWidth: 2.5, tension: 0.3 }
+      ];
+      if (targetLow) datasets.push({ label: 'Target', data: targetLow, borderColor: '#4edea3',
+        borderDash: [6, 4], pointRadius: 0, borderWidth: 1.5, fill: false });
+      if (targetHigh) datasets.push({ label: 'Stretch target', data: targetHigh, borderColor: '#ffb347',
+        borderDash: [6, 4], pointRadius: 0, borderWidth: 1.5, fill: false });
+
+      const ctx = document.getElementById('goalChart').getContext('2d');
+      if (goalChartInstance) goalChartInstance.destroy();
+      goalChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: { labels: years.map(y => 'Y' + y), datasets: datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { display: true, labels: { boxWidth: 10, font: { size: 9 },
+              filter: (item) => item.text !== '10th percentile' } },
+            tooltip: {
+              backgroundColor: '#0b1326', titleColor: '#dae2fd', bodyColor: '#dae2fd',
+              borderColor: '#845ec250', borderWidth: 1,
+              callbacks: { label: (c) => c.dataset.label + ': ' + _goalMoney(c.parsed.y, cur) }
+            }
+          },
+          scales: {
+            x: { grid: { display: false, drawBorder: false }, ticks: { maxTicksLimit: 11, font: { size: 10 } } },
+            y: {
+              grid: { color: '#ffffff05', drawBorder: false },
+              ticks: { maxTicksLimit: 6, font: { size: 10 },
+                callback: (v) => _goalMoney(v, '') }
+            }
+          }
+        }
+      });
+    }
+
+    async function loadGoalProjection() {
+      try {
+        const res = await fetch('/api/goal_projection');
+        const data = await res.json();
+        if (!data.available) {
+          renderGoalUnavailable(data);
+          return;
+        }
+        renderGoalProjection(data);
+      } catch (e) {
+        console.error('Goal projection load failed:', e);
+        document.getElementById('goal-content').innerHTML =
+          `<div class="text-center py-6"><p class="text-xs text-on-surface/40 mb-2">Could not load goal projection.</p>`
+          + `<button onclick="loadGoalProjection();" class="text-[10px] text-primary hover:underline">Retry</button></div>`;
+      }
+    }
+
+    loadDashboardData();
+    loadBenchmark();
+    loadDashPulse();
+    loadSessionCost();
+    loadGoalProjection();
+  </script>
+
+{% endblock %}

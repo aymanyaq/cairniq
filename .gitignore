@@ -1,0 +1,117 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# USER DATA SAFETY ZONE (DO NOT SHIP)
+user_data/
+backups/
+
+# Data & Logs
+logs/
+data/cache/
+*.log
+*.sqlite
+*.sqlite-*
+*.db
+*.jsonl
+*.mp4
+*.webm
+*.mkv
+*.part
+*.ytdl
+
+# Build & Distribution
+dist/
+build/
+*.egg-info/
+*.tar.gz
+*.zip
+.coverage
+# coverage's parallel mode writes .coverage.<host>.<pid>.<rand> alongside it, and
+# scripts/impacted_tests.py --build-map generates them routinely. Without this the
+# files get swept into `git add -A` while still being written, which both pollutes
+# the repo and breaks pre-commit's stash/restore on a live-changing binary.
+.coverage.*
+.testmap.json
+
+# Temporary
+tmp/
+temp/
+.cache/
+scratch/
+*.tmp
+*.bak
+*.bak2
+*.bak3
+*.backup*
+*.broken
+*.orig
+*.old
+
+# Lock files
+.env.lock
+
+# Data caches
+data/daily_cache/
+
+# Documentation (keep source, ignore generated)
+docs/archive/
+
+# Assets — ship PNGs for contributors, skip macOS-only .icns bundles
+assets/icons/*.icns
+# iOS app icon — belongs in the (separate) iOS app project, not this backend repo
+assets/icons/cairniq_appicon_1024.png
+
+# Private/Copyrighted Modules
+tools/guru_feed.py
+landing_page/
+
+# Local-only scripts — default-deny zone for ad-hoc / personal / maintainer scripts.
+# Everything under scripts/local/ is gitignored EXCEPT the tracked README, so a new
+# fix / one-off / data-touching script can't leak into this PUBLIC repo by accident.
+# See scripts/local/README.md. (Replaces the old per-script ignore list.)
+scripts/local/*
+!scripts/local/README.md
+
+# Local AI-tooling configs and indexes — machine-specific, never for the repo
+# (absolute paths inside them leak local usernames; see scripts/local note above).
+.codegraph/
+.cursor/
+.gemini/
+.kiro/
+.mcp.json
+.claude/settings.local.json
+
+# Real-data filenames at the repo ROOT. user_data/ is already ignored, but a
+# statement copied to the repo root, or a script run from here, would otherwise
+# be picked up by `git add -A` — and gitleaks scans for secrets, not holdings.
+/my_portfolio.csv
+/demo_portfolio.csv
+/funnel_config.json
+/portfolio.json
+/holdings.csv
+data/

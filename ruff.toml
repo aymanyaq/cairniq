@@ -1,0 +1,46 @@
+target-version = "py311"
+line-length = 120
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "S",   # flake8-bandit
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "E701",   # multiple statements on one line
+    "E722",   # do not use bare except
+    "E741",   # ambiguous variable name
+    "E402",   # module level import not at top of file
+    "F401",   # unused imports (common in exports and library wrappers)
+    "F811",   # redefinition of unused name
+    "F821",   # undefined name (e.g. pandas type hints or missing imports in legacy scripts)
+    "S101",   # use of assert (fine in tests)
+    "S105",   # hardcoded password strings (false positives on key config strings)
+    "S110",   # try-except-pass
+    "S112",   # try-except-continue
+    "S113",   # requests call without timeout
+    "S301",   # pickle deserialization (used in local caches)
+    "S311",   # standard pseudo-random generators
+    "S603",   # subprocess calls (needed for scripts)
+    "S607",   # partial path (needed for scripts)
+    "S608",   # SQL injection alerts
+    "B006",   # mutable default arguments
+    "B007",   # unused loop control variables
+    "B008",   # function calls in defaults (FastAPI Depends)
+    "B018",   # useless expressions
+    "B023",   # function definition does not bind loop variable
+    "B026",   # star-arg unpacking
+    "B039",   # ContextVar mutable default
+    "B905",   # zip without strict (compatibility)
+    "UP031",  # printf-style format strings
+]
+
+[lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S106"]
+"scripts/**/*.py" = ["S603", "S607"]

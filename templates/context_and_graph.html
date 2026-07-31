@@ -1,0 +1,1904 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    <header class="flex justify-between items-center px-8 h-16 w-full bg-[#131b2e] font-['Manrope'] font-bold uppercase tracking-widest border-b border-[#45464d]/15 shrink-0 z-10">
+      <div class="flex items-center gap-6">
+        <span class="text-xl font-extrabold text-[#dae2fd]">CAIRNIQ // CONTEXT</span>
+      </div>
+    </header>
+
+    <!-- Three tabs, because this page holds three different KINDS of thing: what
+         you have stated, what the advisor has inferred and is waiting on you to
+         confirm, and the graph editor. Stacked on one scroll they read as one
+         undifferentiated wall, and three Save buttons above the fold left it
+         ambiguous which one committed what. Every mutation here reloads the
+         page, so the active tab is persisted — see switchTab(). -->
+    <div class="flex-1 min-h-0 flex flex-col p-6 gap-4">
+      <div class="flex items-center gap-2 border-b border-outline-variant/15 pb-3 shrink-0">
+        <button id="tab-btn-profile" onclick="switchTab('profile')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all bg-surface-container-high text-primary border border-primary/30">
+          <span class="material-symbols-outlined text-sm">person</span>
+          <span>Your Profile</span>
+        </button>
+        <button id="tab-btn-learned" onclick="switchTab('learned')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-high/50">
+          <span class="material-symbols-outlined text-sm">neurology</span>
+          <span>What I've Learned</span>
+          <!-- Drafts are the only thing on this page that is WAITING on the user.
+               Behind a tab they would otherwise be invisible until clicked. -->
+          {% if pending_lessons %}
+          <span class="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-amber-400/20 text-amber-400">{{ pending_lessons|length }}</span>
+          {% endif %}
+        </button>
+        <button id="tab-btn-graph" onclick="switchTab('graph')" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-high/50">
+          <span class="material-symbols-outlined text-sm">hub</span>
+          <span>Knowledge Graph</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: Your Profile — everything you state, plus the readiness report
+           that measures exactly these inputs. -->
+      <div id="view-profile" class="flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-4 pr-1">
+      <!-- User Profile Dashboard Row -->
+      <section class="flex flex-col gap-2 flex-shrink-0">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-2">
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10 group relative">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Age / Generation</p>
+            <input id="profile-age" class="bg-transparent border-none p-0 text-sm font-headline font-bold text-on-surface w-full focus:ring-0" type="text" value="{{ profile.get('age', '') }}" placeholder="Not Set"/>
+          </div>
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10 group relative">
+            <p id="profile-income-label" class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Annual Income ({{ profile.get('annual_income_currency', profile.get('base_currency', 'USD')) }})</p>
+            <input id="profile-income" class="bg-transparent border-none p-0 text-sm font-headline font-bold text-on-surface w-full focus:ring-0" type="text" value="{{ profile.get('annual_income', '') }}" placeholder="Not Set"/>
+          </div>
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10 group relative">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Risk Tolerance</p>
+            <select id="profile-risk" class="appearance-none bg-transparent border-none p-0 pr-5 text-sm font-headline font-bold text-secondary w-full focus:ring-0 cursor-pointer">
+              <option value="">Select...</option>
+              <option value="Aggressive" {% if profile.get('risk_tolerance') == 'Aggressive' %}selected{% endif %}>Aggressive</option>
+              <option value="Moderate" {% if profile.get('risk_tolerance') == 'Moderate' %}selected{% endif %}>Moderate</option>
+              <option value="Conservative" {% if profile.get('risk_tolerance') == 'Conservative' %}selected{% endif %}>Conservative</option>
+            </select>
+            <span class="material-symbols-outlined text-base text-on-surface/40 absolute right-3 bottom-2.5 pointer-events-none">expand_more</span>
+          </div>
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10 group relative">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Retirement Goal</p>
+            <input id="profile-retirement" class="bg-transparent border-none p-0 text-sm font-headline font-bold text-on-surface w-full focus:ring-0" type="text" value="{{ profile.get('retirement_age', '') }}" placeholder="Not Set"/>
+          </div>
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10 group relative">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Base Currency</p>
+            <select id="profile-currency" class="appearance-none bg-transparent border-none p-0 pr-5 text-sm font-headline font-bold text-secondary w-full focus:ring-0 cursor-pointer">
+              <option value="USD" {% if profile.get('base_currency') == 'USD' %}selected{% endif %}>USD ($)</option>
+              <option value="CAD" {% if profile.get('base_currency') == 'CAD' or not profile.get('base_currency') %}selected{% endif %}>CAD ($)</option>
+              <option value="EUR" {% if profile.get('base_currency') == 'EUR' %}selected{% endif %}>EUR (€)</option>
+              <option value="GBP" {% if profile.get('base_currency') == 'GBP' %}selected{% endif %}>GBP (£)</option>
+              <option value="AUD" {% if profile.get('base_currency') == 'AUD' %}selected{% endif %}>AUD ($)</option>
+              <option value="JPY" {% if profile.get('base_currency') == 'JPY' %}selected{% endif %}>JPY (¥)</option>
+            </select>
+            <span class="material-symbols-outlined text-base text-on-surface/40 absolute right-3 bottom-2.5 pointer-events-none">expand_more</span>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button onclick="saveProfile()" class="bg-primary/10 text-primary hover:bg-primary/20 font-bold py-2 px-8 rounded-lg text-xs transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">save</span>
+            Save Changes
+          </button>
+        </div>
+      </section>
+
+      <!-- Wealth Goal — the inputs the goal-tracking panel projects against.
+           Left blank on purpose until stated: nothing here is defaulted, and the
+           projection reads "unavailable" rather than inventing a target. -->
+      <section class="flex flex-col gap-2 flex-shrink-0">
+        <div class="flex items-baseline justify-between px-1">
+          <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Wealth Goal ({{ profile.get('base_currency', 'USD') }}, today's terms)</p>
+          <p class="text-[10px] text-on-surface-variant/60">Unset = no projection. Nothing is assumed on your behalf.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Target (Low)</p>
+            <!-- Thousands separators on the way out; saveGoal()'s read() strips them
+                 on the way back in, so a value round-trips unchanged. -->
+            <input id="goal-target-low" class="bg-transparent border-none p-0 text-sm font-headline font-bold text-on-surface w-full focus:ring-0" type="text" value="{{ '{:,.0f}'.format(profile.get('goal_target_low')) if profile.get('goal_target_low') else '' }}" placeholder="Not Set"/>
+          </div>
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Target (Stretch)</p>
+            <input id="goal-target-high" class="bg-transparent border-none p-0 text-sm font-headline font-bold text-on-surface w-full focus:ring-0" type="text" value="{{ '{:,.0f}'.format(profile.get('goal_target_high')) if profile.get('goal_target_high') else '' }}" placeholder="Not Set"/>
+          </div>
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Horizon (Years)</p>
+            <input id="goal-horizon" class="bg-transparent border-none p-0 text-sm font-headline font-bold text-on-surface w-full focus:ring-0" type="text" value="{{ profile.get('goal_horizon_years') or '' }}" placeholder="Not Set"/>
+          </div>
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Annual Contribution</p>
+            <input id="goal-contribution" class="bg-transparent border-none p-0 text-sm font-headline font-bold text-on-surface w-full focus:ring-0" type="text" value="{{ '{:,.0f}'.format(profile.get('goal_annual_contribution')) if profile.get('goal_annual_contribution') else '' }}" placeholder="Not Set"/>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button onclick="saveGoal()" class="bg-primary/10 text-primary hover:bg-primary/20 font-bold py-2 px-8 rounded-lg text-xs transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">flag</span>
+            Save Goal
+          </button>
+        </div>
+      </section>
+
+      <!-- Drawdown Playbook (Roadmap 3.7) — rules written while calm, read back
+           by the sentinel at −15% and −25%. Nothing here is suggested by the app:
+           a rule invented by software carries the authority of a promise the user
+           made to themselves, and they will act on it during a crash. -->
+      <section class="flex flex-col gap-2 flex-shrink-0">
+        <div class="flex items-baseline justify-between px-1">
+          <div class="flex items-baseline gap-2">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Drawdown Playbook</p>
+            <!-- The playbook's own readiness, on the card that fills it in.
+                 Set by loadReadiness() from the same payload the report below
+                 renders, so the two can never disagree about this block. -->
+            <span id="pb-status" class="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40"></span>
+          </div>
+          <p class="text-[10px] text-on-surface-variant/60">Written calm, read back at &minus;15% / &minus;25%. Blank = nothing is claimed on your behalf.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Never Sold In A Drawdown</p>
+            <textarea id="pb-never-sell" rows="2" class="bg-transparent border-none p-0 text-sm font-headline text-on-surface w-full focus:ring-0 resize-none" placeholder="One per line — e.g. core index ETFs">{{ (playbook.get('never_sell') or []) | join('\n') }}</textarea>
+          </div>
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">New Contributions Buy First <span class="text-on-surface-variant/40 normal-case">(order matters)</span></p>
+            <textarea id="pb-buy-first" rows="2" class="bg-transparent border-none p-0 text-sm font-headline text-on-surface w-full focus:ring-0 resize-none" placeholder="One per line, highest priority first">{{ (playbook.get('buy_first') or []) | join('\n') }}</textarea>
+          </div>
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Cash Deployment Ladder</p>
+            <textarea id="pb-levels" rows="3" class="bg-transparent border-none p-0 text-sm font-headline text-on-surface w-full focus:ring-0 resize-none" placeholder="One per line: 15% = deploy half the cash reserve">{% for lvl in (playbook.get('deployment_levels') or []) %}{{ lvl.drawdown_pct }}% = {{ lvl.action }}
+{% endfor %}</textarea>
+          </div>
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10 flex flex-col gap-2">
+            <div>
+              <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Rebalance Drift Trigger (%)</p>
+              <input id="pb-drift" class="bg-transparent border-none p-0 text-sm font-headline font-bold text-on-surface w-full focus:ring-0" type="text" value="{{ playbook.get('rebalance_drift_pct') or '' }}" placeholder="Not Set"/>
+            </div>
+            <div>
+              <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Note To Your Future Self</p>
+              <input id="pb-notes" class="bg-transparent border-none p-0 text-sm font-headline text-on-surface w-full focus:ring-0" type="text" value="{{ playbook.get('notes') or '' }}" placeholder="Not Set"/>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2">
+          <button onclick="savePlaybook()" class="bg-primary/10 text-primary hover:bg-primary/20 font-bold py-2 px-8 rounded-lg text-xs transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">shield</span>
+            Save Playbook
+          </button>
+        </div>
+      </section>
+
+      <!-- Risk Limits (Roadmap 2.2's gate, 4.4's bounds) — the caps the
+           pre-trade check enforces and the optimizer solves inside. Blank is a
+           real answer here and always has been: unstated means unconstrained,
+           and nothing in the app supplies a figure. What the confirmation below
+           adds is the difference between an axis left open on purpose and one
+           nobody has ever been asked about — the second is what leaves a sized
+           proposal not execution-ready. -->
+      <section class="flex flex-col gap-2 flex-shrink-0">
+        <div class="flex items-baseline justify-between px-1">
+          <div class="flex items-baseline gap-2">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Risk Limits</p>
+            <span id="rc-status" class="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40"></span>
+          </div>
+          <p class="text-[10px] text-on-surface-variant/60">% of portfolio. Blank = unlimited on that axis, and nothing is assumed for you.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-2">
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Max Single Name (%)</p>
+            <input id="rc-max-position" class="bg-transparent border-none p-0 text-sm font-headline font-bold text-on-surface w-full focus:ring-0" type="text" value="{{ risk_constraints.get('max_position_pct') or '' }}" placeholder="Not Set"/>
+          </div>
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Max Fund / ETF (%)</p>
+            <input id="rc-max-fund" class="bg-transparent border-none p-0 text-sm font-headline font-bold text-on-surface w-full focus:ring-0" type="text" value="{{ risk_constraints.get('max_fund_position_pct') or '' }}" placeholder="Not Set"/>
+          </div>
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Max Sector (%)</p>
+            <input id="rc-max-sector" class="bg-transparent border-none p-0 text-sm font-headline font-bold text-on-surface w-full focus:ring-0" type="text" value="{{ risk_constraints.get('max_sector_pct') or '' }}" placeholder="Not Set"/>
+          </div>
+          <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Max Risk Per Trade (%)</p>
+            <input id="rc-max-risk" class="bg-transparent border-none p-0 text-sm font-headline font-bold text-on-surface w-full focus:ring-0" type="text" value="{{ risk_constraints.get('max_risk_per_trade_pct') or '' }}" placeholder="Not Set"/>
+          </div>
+        </div>
+        <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10">
+          <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Restricted Symbols <span class="text-on-surface-variant/40 normal-case">(no new buys &mdash; never a forced sale)</span></p>
+          <input id="rc-restricted" class="bg-transparent border-none p-0 text-sm font-headline text-on-surface w-full focus:ring-0" type="text" value="{{ (risk_constraints.get('restricted_symbols') or []) | join(', ') }}" placeholder="Not Set — comma separated"/>
+        </div>
+        <!-- What each box does, while you are deciding — not in a report
+             afterwards. The sentences come from the readiness payload, so this
+             preview and the report below cannot tell two different stories. -->
+        <div id="rc-consequences" class="flex flex-col gap-1 px-1"></div>
+        <!-- The confirmation. Ticking it is the ONLY way the app learns that a
+             blank above is deliberate; it records the axes that are blank when
+             you save, so a limit you delete later goes back to being an open
+             question rather than inheriting this answer. -->
+        <label class="flex items-start gap-2 px-1 cursor-pointer">
+          <input id="rc-ack" type="checkbox" class="mt-0.5 rounded border-outline-variant/40 bg-transparent text-primary focus:ring-0 focus:ring-offset-0"/>
+          <span class="text-[10px] text-on-surface-variant leading-snug">
+            I understand that any box left blank above means <span class="text-on-surface font-bold">no limit at all</span> on that axis, and I mean it.
+            <span class="text-on-surface-variant/50">Until this is confirmed, sized proposals report themselves as not execution-ready — the app has no limit to check them against and will not invent one.</span>
+          </span>
+        </label>
+        <p id="rc-ack-state" class="text-[9px] text-on-surface-variant/40 italic px-1"></p>
+        <div class="flex justify-end gap-2">
+          <button onclick="saveRiskLimits()" class="bg-primary/10 text-primary hover:bg-primary/20 font-bold py-2 px-8 rounded-lg text-xs transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">speed</span>
+            Save Risk Limits
+          </button>
+        </div>
+      </section>
+
+      <!-- Target Allocation (Roadmap 4.4's drift target) — the sleeve mix you
+           are actually trying to hold.
+
+           This store shipped with NO writer of any kind: `target_allocation`
+           existed only as a function parameter, so `check_rebalance_drift`
+           reported "nothing to drift against" as though the user had declined to
+           say, when in fact nobody could tell us. Same shape as risk_constraints
+           before 2.9, and the reason this screen exists rather than a default.
+
+           Weights are NOT rescaled. A mix summing to 90% is refused rather than
+           stretched to 100%, because stretching turns a deliberate 10% cash
+           position into "spread it across everything" and emits real BUY
+           instructions for money meant to be held. Name cash as a sleeve. -->
+      <section class="flex flex-col gap-2 flex-shrink-0">
+        <div class="flex items-baseline justify-between px-1">
+          <div class="flex items-baseline gap-2">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Target Allocation</p>
+            <span id="ta-status" class="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40"></span>
+          </div>
+          <p class="text-[10px] text-on-surface-variant/60">Must total 100%. Hold cash on purpose? Give it its own line.</p>
+        </div>
+        <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10">
+          <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Sleeves <span class="text-on-surface-variant/40 normal-case">(one per line, <span class="font-mono">SYMBOL 40</span> or <span class="font-mono">SYMBOL, 40</span>)</span></p>
+          <textarea id="ta-weights" rows="6" class="bg-transparent border-none p-0 text-sm font-mono text-on-surface w-full focus:ring-0 resize-y" placeholder="Not Set&#10;VTI 40&#10;VXUS 30&#10;BND 20&#10;CASH 10">{% for sym, pct in (target_allocation.get('weights') or {}).items() %}{{ sym }} {{ pct }}
+{% endfor %}</textarea>
+        </div>
+        <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10">
+          <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Note <span class="text-on-surface-variant/40 normal-case">(optional &mdash; why this mix)</span></p>
+          <input id="ta-note" class="bg-transparent border-none p-0 text-sm font-headline text-on-surface w-full focus:ring-0" type="text" value="{{ target_allocation.get('note') or '' }}" placeholder="Not Set"/>
+        </div>
+        <p id="ta-total" class="text-[10px] px-1 font-mono text-on-surface-variant/50"></p>
+        <p class="text-[10px] text-on-surface-variant/50 px-1 leading-snug">
+          Without this, <span class="text-on-surface font-bold">&ldquo;should I rebalance?&rdquo; cannot be answered at all</span> &mdash; there is nothing to measure drift against, and the app will not invent a target. Your drawdown playbook&rsquo;s rebalance band decides <em>how far</em> is too far; this decides <em>from what</em>.
+        </p>
+        <div class="flex justify-end gap-2">
+          <button onclick="saveTargetAllocation()" class="bg-primary/10 text-primary hover:bg-primary/20 font-bold py-2 px-8 rounded-lg text-xs transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">donut_small</span>
+            Save Target Allocation
+          </button>
+        </div>
+      </section>
+
+      <!-- Account Jurisdictions (Roadmap 4.7a) — which country's tax rules apply
+           to each account.
+
+           Tax jurisdiction is a property of the ACCOUNT, not of the profile: one
+           household can hold accounts in two countries. It is never taken from
+           REGIONAL_LOCALE, which is a display setting.
+
+           Until this existed the only evidence was the account NAME, which has
+           twice been wrong in a way that inverted the answer ("ISA" matched
+           *Visa*, "REGISTERED" matched *Non-Registered*) and is simply silent
+           for "Brokerage" or "Pension". The name is still the fallback — leaving
+           a row blank keeps it — so this screen is not a switch between working
+           and dark; it is the difference between a rule applied on your
+           statement and one applied on a substring match.
+
+           Rows come from the accounts your HOLDINGS actually name, not from the
+           store, because a store keyed by free text can be full and match
+           nothing. An entry that has stopped matching is called out. -->
+      <section class="flex flex-col gap-2 flex-shrink-0">
+        <div class="flex items-baseline justify-between px-1">
+          <div class="flex items-baseline gap-2">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Account Jurisdictions</p>
+            <span id="aj-status" class="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40"></span>
+          </div>
+          <p class="text-[10px] text-on-surface-variant/60">Two-letter country code, or UNKNOWN. Blank keeps the guess from the name.</p>
+        </div>
+        <div id="aj-rows" class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10 flex flex-col gap-2">
+          <p class="text-[10px] text-on-surface-variant/50">Reading your accounts&hellip;</p>
+        </div>
+        <datalist id="aj-codes">
+          <option value="CA">Canada</option>
+          <option value="US">United States</option>
+          <option value="GB">United Kingdom</option>
+          <option value="AU">Australia</option>
+          <option value="UNKNOWN">No country I can name</option>
+        </datalist>
+        <div class="bg-surface-container-high p-3 rounded-xl border border-outline-variant/10">
+          <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-0">Note <span class="text-on-surface-variant/40 normal-case">(optional)</span></p>
+          <input id="aj-note" class="bg-transparent border-none p-0 text-sm font-headline text-on-surface w-full focus:ring-0" type="text" placeholder="Not Set"/>
+        </div>
+        <p id="aj-warnings" class="text-[10px] px-1 leading-snug text-[#e0b252]"></p>
+        <p class="text-[10px] text-on-surface-variant/50 px-1 leading-snug">
+          Without a country, jurisdiction-specific tax checks are <span class="text-on-surface font-bold">skipped, not guessed</span> &mdash; the withholding check on a tax-free shelter, and the loss-deferral rules behind a sell-and-rebuy. A rule from the wrong country does not merely miss: the Canadian TFSA treatment charged to a US Roth invents a leak that is not there. Taxable accounts need no country.
+        </p>
+        <div class="flex justify-end gap-2">
+          <button onclick="saveAccountJurisdictions()" class="bg-primary/10 text-primary hover:bg-primary/20 font-bold py-2 px-8 rounded-lg text-xs transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">public</span>
+            Save Jurisdictions
+          </button>
+        </div>
+      </section>
+
+      <!-- Profile Readiness (Roadmap 2.8) — the inputs above, plus the rating
+           pool, measured against the shipped features that read them. Five
+           times a slice has shipped correct and then sat dark on an empty
+           store; this block is where that gets said out loud. It reports and
+           names the consequence — it never proposes a value, and a blank here
+           is a valid answer. Rendered from GET /api/profile_readiness. -->
+      <section class="flex flex-col gap-2 flex-shrink-0">
+        <div class="flex items-baseline justify-between px-1">
+          <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Profile Readiness</p>
+          <p id="readiness-summary" class="text-[10px] text-on-surface-variant/60">What is on file, and what stays switched off while it is not.</p>
+        </div>
+        <!-- The switchboard: one chip per shipped capability these stores feed,
+             lit or dark. The consequence is the half of this report anyone acts
+             on, and until now it was reachable only by reading four `cost`
+             sentences and mentally deduping them. -->
+        <div id="readiness-switchboard" class="flex flex-wrap gap-1.5 px-1"></div>
+        <div id="readiness-content" class="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <p class="text-[10px] text-on-surface-variant/40 italic">Reading your stores...</p>
+        </div>
+        <!-- Legend for the per-row field marks. Hollow, never red: a blank is a
+             valid answer here, and a colour that reads as an error would make
+             this the nag the surface refuses to be. -->
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 text-[9px] text-on-surface-variant/40">
+          <span class="flex items-center gap-1.5"><span class="w-4 h-1.5 rounded-sm bg-primary"></span>stated</span>
+          <span class="flex items-center gap-1.5"><span class="w-4 h-1.5 rounded-sm bg-primary/40"></span>optional, stated</span>
+          <span class="flex items-center gap-1.5"><span class="w-4 h-1.5 rounded-sm bg-primary/20 border border-primary/40"></span>no limit, by your choice</span>
+          <span class="flex items-center gap-1.5"><span class="w-4 h-1.5 rounded-sm border border-dashed border-on-surface-variant/40"></span>blank</span>
+          <span class="flex items-center gap-1.5"><span class="w-4 h-1.5 rounded-sm readiness-pip-unknown"></span>unreadable</span>
+        </div>
+        <p id="readiness-contract" class="text-[9px] text-on-surface-variant/40 italic px-1"></p>
+      </section>
+      </div><!-- /view-profile -->
+
+      <!-- TAB 2: What I've Learned — what the advisor inferred, what it drafted
+           and is waiting on you to confirm, and the fragments it stored. Nothing
+           in this tab was typed by the user on this page; that is the line the
+           split is drawn on. -->
+      <div id="view-learned" class="hidden flex-1 min-h-0 overflow-y-auto no-scrollbar space-y-4 pr-1">
+
+      <!-- Observation Log (Roadmap 1.7) — what the advisor has NOTICED, as
+           opposed to what you have told it. Recorded after each turn by
+           deterministic detectors; never injected into any prompt. The only way
+           anything here reaches the model is the consolidation pass drafting a
+           rule into My Instructions and you confirming it. Rendered from
+           GET /api/observations. -->
+      <section class="flex flex-col gap-2 flex-shrink-0">
+        <div class="flex items-baseline justify-between px-1">
+          <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Observation Log</p>
+          <div class="flex items-baseline gap-3">
+            <p id="observations-summary" class="text-[10px] text-on-surface-variant/60">Reading the log...</p>
+            <button onclick="consolidateObservations()" id="observations-consolidate"
+              class="bg-surface-container-highest border border-outline-variant/30 text-primary font-bold py-1 px-3 rounded-lg text-[10px] uppercase tracking-tighter hover:bg-surface-bright transition-colors">
+              Consolidate now
+            </button>
+          </div>
+        </div>
+        <div id="observations-counts" class="flex flex-wrap gap-2"></div>
+        <div id="observations-recent" class="space-y-1 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar"></div>
+        <p id="observations-contract" class="text-[9px] text-on-surface-variant/40 italic px-1"></p>
+      </section>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- My Instructions Feed -->
+        <div class="bg-surface-container-high rounded-xl p-4 border border-outline-variant/10">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-error text-xl" data-icon="rule">rule</span>
+              <h2 class="text-xs font-bold tracking-tight uppercase">My Instructions</h2>
+              <!-- At the cap a new rule RETIRES the oldest one, so how full the
+                   store is has to be visible before the user adds, not only
+                   after it has already cost them a rule. -->
+              <span class="text-[10px] font-black uppercase tracking-widest {% if lessons|length >= lesson_cap %}text-amber-400{% else %}text-on-surface-variant/50{% endif %}">
+                {{ lessons|length }}/{{ lesson_cap }}
+              </span>
+            </div>
+            <button onclick="logLesson()" class="bg-error/10 text-error hover:bg-error/20 font-bold py-1 px-3 rounded-lg text-[10px] transition-colors flex items-center gap-1 uppercase tracking-tighter">
+              <span class="material-symbols-outlined text-sm">add</span>
+              Log New
+            </button>
+          </div>
+          {% if pending_lessons %}
+          <!-- Drafted from a thumbs-down, NOT in effect. Lessons are injected
+               into every prompt and the store is capped, so confirming one at
+               the cap retires a rule the user actually wrote — which is why the
+               confirm response names what it cost. -->
+          <div class="mb-3 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3">
+            <p class="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-2">
+              Drafted from your feedback — not applied yet
+            </p>
+            <div class="space-y-2">
+              {% for draft in pending_lessons %}
+              <div class="flex items-start gap-2">
+                <div class="flex-1">
+                  <p class="text-[10px] text-on-surface leading-snug">{{ draft.text }}</p>
+                  {% if draft.evidence and draft.evidence.query %}
+                  <p class="text-[9px] text-on-surface-variant/40 italic mt-0.5">on: {{ draft.evidence.query }}</p>
+                  {% endif %}
+                </div>
+                <div class="flex gap-1 shrink-0">
+                  <button onclick="confirmDraftedLesson('{{ draft.id }}')" title="Apply this instruction"
+                    class="p-1 text-primary/70 hover:text-primary transition-colors">
+                    <span class="material-symbols-outlined text-xs">check</span>
+                  </button>
+                  <button onclick="discardDraftedLesson('{{ draft.id }}')" title="Discard"
+                    class="p-1 text-error/50 hover:text-error transition-colors">
+                    <span class="material-symbols-outlined text-xs">close</span>
+                  </button>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          {% if lessons|length >= lesson_cap %}
+          <div class="mb-3 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3">
+            <p class="text-[10px] text-amber-400 leading-snug">
+              Full at {{ lesson_cap }}. The next rule you record — including a draft you
+              confirm — retires the oldest one to make room: “{{ lessons[0] }}”
+              Delete a different rule first if you'd rather keep that one.
+            </p>
+          </div>
+          {% endif %}
+          <div class="space-y-2 overflow-y-auto pr-2 custom-scrollbar max-h-[420px]">
+            {% for lesson in lessons %}
+              <div class="flex gap-4 group relative pr-8">
+                <div class="absolute top-0 right-0 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onclick="deleteLesson({{ loop.index0 }})" class="p-1 text-error/60 hover:text-error transition-colors">
+                    <span class="material-symbols-outlined text-xs">delete</span>
+                  </button>
+                </div>
+                <div class="w-1 h-auto bg-error rounded-full group-hover:scale-y-110 transition-transform"></div>
+                <div class="flex-1">
+                  <p class="text-[10px] font-black text-error uppercase tracking-widest mb-1">Correction</p>
+                  <p class="text-[10px] text-on-surface leading-snug">{{ lesson }}</p>
+                </div>
+              </div>
+            {% endfor %}
+            {% if not lessons %}
+            <p class="text-[10px] text-on-surface-variant/40 italic">No corrective lessons recorded.</p>
+            {% endif %}
+          </div>
+        </div>
+        <!-- User Memory Section -->
+        <div class="bg-surface-container-high rounded-xl p-4 border border-outline-variant/10">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-xl" data-icon="person_pin">person_pin</span>
+              <h2 class="text-xs font-bold tracking-tight uppercase">User Memory</h2>
+            </div>
+            <button onclick="addMemory()" class="bg-primary/10 text-primary hover:bg-primary/20 font-bold py-1 px-3 rounded-lg text-[10px] transition-colors flex items-center gap-1 uppercase tracking-tighter">
+              <span class="material-symbols-outlined text-sm">add</span>
+              Add Fragment
+            </button>
+          </div>
+          <div class="space-y-2 overflow-y-auto pr-2 custom-scrollbar max-h-[420px]">
+            {% for fact in facts %}
+            <div class="p-3 bg-surface-container-low rounded-xl border border-primary/20 group relative border-l-2 border-l-primary">
+              <div class="absolute top-2 right-2 flex gap-1 group-hover:opacity-100 transition-opacity opacity-40">
+                <button onclick="apiCall('/api/memory/facts/{{ loop.index0 }}', 'DELETE')" class="p-1 text-on-surface-variant hover:text-error transition-colors">
+                  <span class="material-symbols-outlined text-sm text-error/70 hover:text-error">delete</span>
+                </button>
+              </div>
+              <p class="text-[10px] font-bold text-primary mb-1 uppercase tracking-wider">Context Fragment</p>
+              <p class="text-[10px] leading-relaxed text-on-surface-variant">{{ fact }}</p>
+            </div>
+            {% endfor %}
+            {% if not facts %}
+            <p class="text-[10px] text-on-surface-variant/40 italic">No persistent memory fragments recorded.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      </div><!-- /view-learned -->
+
+      <!-- TAB 3: Knowledge Graph — the editor and its controls. It gets the whole
+           viewport here; stacked under six other panels the canvas only ever
+           rendered at its 300px floor. -->
+      <!-- overflow-y-auto matters below lg, where the two columns stack and the
+           canvas is pushed past the viewport. At lg the columns fit exactly and
+           no scrollbar appears. -->
+      <div id="view-graph" class="hidden flex-1 min-h-0 overflow-y-auto no-scrollbar grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <!-- Left Column: Graph controls (4 columns) -->
+        <div class="lg:col-span-4 flex flex-col gap-4 min-h-0 overflow-y-auto no-scrollbar pr-1">
+          <!-- Intelligence Inspector (Appears on selection) -->
+          <div id="inspector-panel" class="bg-surface-container-high rounded-xl p-4 border border-primary/30 flex-col shadow-xl shadow-primary/5 hidden animate-in fade-in slide-in-from-left-4 duration-300">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-xl">info</span>
+                <h2 class="text-xs font-bold tracking-tight uppercase">Inspector</h2>
+              </div>
+              <button onclick="deselectAll()" class="text-on-surface-variant hover:text-on-surface transition-colors">
+                <span class="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+            
+            <div id="inspector-content" class="space-y-4">
+              <!-- Content injected via JS -->
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-outline-variant/10 flex flex-col gap-3">
+               <button id="btn-delete-node" onclick="deleteSelectedNode()" class="w-full bg-error/10 text-error hover:bg-error/20 border border-error/20 font-bold py-3 rounded-xl transition-colors text-[10px] uppercase tracking-widest hidden">
+                  Delete Entity
+               </button>
+               <button id="btn-delete-link" onclick="deleteSelectedLink()" class="w-full bg-error/10 text-error hover:bg-error/20 border border-error/20 font-bold py-3 rounded-xl transition-colors text-[10px] uppercase tracking-widest hidden">
+                  Delete Relationship
+               </button>
+            </div>
+          </div>
+
+          <!-- Add Entity/Node -->
+          <div class="bg-surface-container-high rounded-xl p-4 flex flex-col border border-outline-variant/10">
+            <div class="flex items-center gap-2 mb-4">
+              <span class="material-symbols-outlined text-primary text-xl" data-icon="add_circle">add_circle</span>
+              <h2 class="text-xs font-bold tracking-tight">Add Entity/Node</h2>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Entity Name</label>
+                <input id="node-name" class="w-full bg-surface-container-highest border-none rounded-xl text-xs p-3 focus:ring-1 focus:ring-primary/50 text-on-surface" placeholder="e.g. AMD or Cloud Computing" type="text"/>
+              </div>
+              <div>
+                <label class="block text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Entity Type</label>
+                <div class="relative">
+                  <select id="node-type" class="appearance-none w-full bg-surface-container-highest border-none rounded-xl text-xs p-3 pr-9 focus:ring-1 focus:ring-primary/50 text-on-surface-variant cursor-pointer">
+                    <option>Ticker</option>
+                    <option>Sector</option>
+                    <option>Event</option>
+                    <option>Macro Indicator</option>
+                  </select>
+                  <span class="material-symbols-outlined text-base text-on-surface/40 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
+                </div>
+              </div>
+            </div>
+            <button onclick="createNode()" class="w-full mt-6 bg-gradient-to-r from-primary to-on-primary-container text-on-primary font-bold py-4 rounded-xl shadow-lg shadow-primary/10 hover:scale-[1.02] active:scale-95 transition-transform">
+              Create Node
+            </button>
+          </div>
+          <!-- Manage Relationships — a graph control, so it sits with Add Entity
+               rather than beside the instruction feed it used to share a row with. -->
+          <div class="bg-surface-container-high rounded-xl p-4 border border-outline-variant/10">
+            <div class="flex items-center gap-2 mb-4">
+              <span class="material-symbols-outlined text-secondary text-xl" data-icon="schema">schema</span>
+              <h2 class="text-xs font-bold tracking-tight">Manage Relationships</h2>
+            </div>
+            <div class="space-y-4 mb-4">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Source</label>
+                  <div class="relative">
+                    <select id="rel-source" class="appearance-none w-full bg-surface-container-highest border-none rounded-xl text-[11px] p-3 pr-9 text-on-surface-variant focus:ring-1 focus:ring-primary/40 cursor-pointer">
+                      {% for node in graph_nodes %}<option value="{{ node.id }}">{{ node.id }}</option>{% endfor %}
+                    </select>
+                    <span class="material-symbols-outlined text-base text-on-surface/40 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Target</label>
+                  <div class="relative">
+                    <select id="rel-target" class="appearance-none w-full bg-surface-container-highest border-none rounded-xl text-[11px] p-3 pr-9 text-on-surface-variant focus:ring-1 focus:ring-primary/40 cursor-pointer">
+                      {% for node in graph_nodes %}<option value="{{ node.id }}">{{ node.id }}</option>{% endfor %}
+                    </select>
+                    <span class="material-symbols-outlined text-base text-on-surface/40 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label class="block text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Relation Type</label>
+                <div class="relative">
+                  <select class="appearance-none w-full bg-surface-container-highest border-none rounded-xl text-[11px] p-3 pr-9 text-on-surface-variant focus:ring-1 focus:ring-primary/40 cursor-pointer">
+                    <option>Depends on</option>
+                    <option>Correlated with</option>
+                    <option>Competes with</option>
+                  </select>
+                  <span class="material-symbols-outlined text-base text-on-surface/40 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
+                </div>
+              </div>
+            </div>
+            <button onclick="createRelation()" class="w-full bg-surface-container-highest border border-outline-variant/30 text-primary font-bold py-2 rounded-xl hover:bg-surface-bright transition-colors text-[10px] uppercase tracking-widest">
+              Add Connection
+            </button>
+          </div>
+        </div>
+        <!-- Right Column: the canvas, now full height (8 columns) -->
+        <div class="lg:col-span-8 flex flex-col min-h-0">
+          <section class="relative w-full flex-1 min-h-[300px] bg-surface-container-low rounded-xl overflow-hidden group border border-outline-variant/10">
+            <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(#4edea3 1px, transparent 1px); background-size: 40px 40px;"></div>
+            
+            <!-- Nodes Container -->
+            <div id="graph-canvas" class="absolute inset-0 z-10 w-full h-full">
+              {% if not graph_nodes %}
+              <div class="absolute inset-0 flex flex-col items-center justify-center text-center opacity-20 pointer-events-none">
+                <span class="material-symbols-outlined text-4xl mb-2">hub</span>
+                <p class="text-xs uppercase tracking-widest font-bold">No active nodes in knowledge base</p>
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- Controls Overlay -->
+            <div class="absolute bottom-4 right-4 flex flex-col gap-2 z-20">
+              <div class="glass-panel p-2 rounded-lg border border-outline-variant/20 shadow-2xl flex flex-col gap-1">
+                <button id="zoom-in" class="w-8 h-8 flex items-center justify-center rounded hover:bg-surface-bright text-on-surface-variant transition-colors"><span class="material-symbols-outlined text-lg" data-icon="zoom_in">zoom_in</span></button>
+                <button id="zoom-out" class="w-8 h-8 flex items-center justify-center rounded hover:bg-surface-bright text-on-surface-variant transition-colors"><span class="material-symbols-outlined text-lg" data-icon="zoom_out">zoom_out</span></button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div><!-- /view-graph -->
+    </div>
+
+{% endblock %}
+{% block scripts %}
+
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+const graphData = {
+  nodes: {{ graph_nodes | tojson | safe }},
+  links: {{ graph_links | tojson | safe }}
+};
+
+let selectedNode = null;
+let selectedLink = null;
+
+// ============================================================
+// UTILITIES
+// ============================================================
+function showToast(msg, type = "success") {
+    const existing = document.getElementById('cairn-toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'cairn-toast';
+    toast.className = `fixed bottom-8 right-8 z-[110] px-6 py-3 rounded-xl bg-surface-container-high border border-primary/20 shadow-2xl animate-in slide-in-from-right duration-300 flex items-center gap-3`;
+    
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'material-symbols-outlined text-primary';
+    iconSpan.textContent = 'sync';
+    
+    const textSpan = document.createElement('span');
+    textSpan.className = 'text-sm font-bold text-on-surface';
+    textSpan.textContent = msg;
+    
+    toast.appendChild(iconSpan);
+    toast.appendChild(textSpan);
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('animate-out', 'slide-out-to-right');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+async function apiCall(endpoint, method = 'POST', body = null, successMsg = null) {
+  const options = {
+    method,
+    headers: { 'Content-Type': 'application/json' }
+  };
+  if (body) options.body = JSON.stringify(body);
+  
+  try {
+    const res = await fetch(endpoint, options);
+    if (res.ok) {
+        // A 200 can still carry news the user has to see: recording a rule at
+        // the cap RETIRES the oldest one, and the retired text exists nowhere
+        // after this response. Announce it, log it, and hold the reload long
+        // enough to read it — a silent success here loses a rule they wrote.
+        let notice = null;
+        try {
+            const payload = JSON.parse(await res.text());
+            if (payload && payload.notice) {
+                notice = payload.notice;
+                console.warn("Retired to stay under the cap:", payload.retired);
+            }
+        } catch (parseErr) { /* empty or non-JSON body — nothing to announce */ }
+        if (notice) {
+            showToast(notice, 'error');
+            setTimeout(() => location.reload(), 3500);
+        } else if (successMsg) {
+            showToast(successMsg, 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            location.reload();
+        }
+    } else {
+      const errorText = await res.text();
+      console.error("API Error:", errorText);
+      // Show what the server actually said. A refusal with a reason — the lesson
+      // store being full is the one that matters here — is useless if it renders
+      // as a generic sync error, and an invisible refusal is the failure mode
+      // this whole area is being fixed for.
+      let message = "Sync Error: Check Console";
+      try {
+        const payload = JSON.parse(errorText);
+        if (payload && payload.error) message = payload.error;
+      } catch (parseErr) { /* not JSON — keep the generic message */ }
+      showToast(message, "error");
+    }
+  } catch (e) {
+    console.error("Fetch failed:", e);
+    showToast("Network Link Broken", "error");
+  }
+}
+
+// ============================================================
+// GRAPH SELECTION & INSPECTOR
+// ============================================================
+function deselectAll() {
+  selectedNode = null;
+  selectedLink = null;
+  
+  // Reset visual styles in D3
+  d3.selectAll(".node-group circle")
+    .attr("stroke-width", d => d.owned ? 4 : 2)
+    .attr("stroke", d => {
+        if (d.owned) return "#4edea3";
+        if (d.type === 'Ticker' || d.type === 'Stock') return "#4edea3";
+        if (d.type === 'Sector') return "#0566d9";
+        return "#45464d";
+    });
+  d3.selectAll(".link-path").attr("stroke-opacity", 0.4).attr("stroke-width", 1.5);
+  
+  const panel = document.getElementById('inspector-panel');
+  if (panel) {
+    panel.classList.add('hidden');
+    panel.classList.remove('flex');
+  }
+}
+
+function selectNode(d) {
+  deselectAll();
+  selectedNode = d;
+  
+  // Visual highlight
+  d3.selectAll(".node-group").filter(n => n.id === d.id).select("circle")
+    .attr("stroke", "#ffffff")
+    .attr("stroke-width", 4);
+
+  const panel = document.getElementById('inspector-panel');
+  const content = document.getElementById('inspector-content');
+  const btnNode = document.getElementById('btn-delete-node');
+  const btnLink = document.getElementById('btn-delete-link');
+
+  content.innerHTML = `
+    <div class="space-y-4">
+      <div>
+        <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Entity Name</p>
+        <p class="text-xl font-headline font-bold text-on-surface">${d.id}</p>
+      </div>
+      <div>
+        <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Type</p>
+        <div class="inline-block px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary uppercase">
+          ${d.type || 'Unknown'}
+        </div>
+      </div>
+      ${d.sector ? `
+      <div>
+        <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Sector</p>
+        <p class="text-sm text-on-surface-variant">${d.sector}</p>
+      </div>` : ''}
+    </div>
+  `;
+
+  btnNode.classList.remove('hidden');
+  btnLink.classList.add('hidden');
+  panel.classList.remove('hidden');
+  panel.classList.add('flex');
+}
+
+function selectLink(d) {
+  deselectAll();
+  selectedLink = d;
+
+  // Visual highlight
+  d3.selectAll(".link-path").filter(l => l.source.id === d.source.id && l.target.id === d.target.id && l.relation === d.relation)
+    .attr("stroke-opacity", 1)
+    .attr("stroke-width", 3);
+
+  const panel = document.getElementById('inspector-panel');
+  const content = document.getElementById('inspector-content');
+  const btnNode = document.getElementById('btn-delete-node');
+  const btnLink = document.getElementById('btn-delete-link');
+
+  content.innerHTML = `
+    <div class="space-y-4">
+      <div>
+        <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mb-1">Relationship</p>
+        <p class="text-sm text-on-surface leading-loose">
+          <span class="font-bold text-primary">${d.source.id || d.source}</span>
+          <span class="mx-2 text-on-surface-variant font-mono">--[${d.relation}]--></span>
+          <span class="font-bold text-primary">${d.target.id || d.target}</span>
+        </p>
+      </div>
+    </div>
+  `;
+
+  btnNode.classList.add('hidden');
+  btnLink.classList.remove('hidden');
+  panel.classList.remove('hidden');
+  panel.classList.add('flex');
+}
+
+// ============================================================
+// D3 GRAPH ENGINE
+// ============================================================
+const initGraph = () => {
+    const container = document.getElementById('graph-canvas');
+    if (!container || !graphData.nodes || !graphData.nodes.length) return;
+
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    // A container on a hidden tab measures 0x0, which would render an SVG with
+    // viewBox="0 0 0 0" — present in the DOM, invisible on screen. Bail instead:
+    // switchTab() rebuilds the graph whenever its tab is shown, so a live
+    // WebSocket update that lands while another tab is open is not lost.
+    if (!width || !height) return;
+
+    // Clear previous SVG
+    d3.select("#graph-canvas").selectAll("svg").remove();
+
+    const svg = d3.select("#graph-canvas")
+        .append("svg")
+        .attr("width", "100%")
+        .attr("height", "100%")
+        .attr("viewBox", [0, 0, width, height])
+        .style("cursor", "move");
+
+    const g = svg.append("g");
+
+    // Zoom behavior
+    const zoom = d3.zoom()
+        .scaleExtent([0.1, 4])
+        .on("zoom", (event) => g.attr("transform", event.transform));
+    svg.call(zoom);
+
+    // Initial Selection handling
+    svg.on("click", (event) => {
+        if (event.target === svg.node()) deselectAll();
+    });
+
+  const nodes = graphData.nodes.map(d => ({ ...d }));
+  const links = graphData.links.map(d => ({ ...d }));
+
+  svg.append("defs").append("marker")
+    .attr("id", "arrowhead")
+    .attr("viewBox", "-0 -5 10 10")
+    .attr("refX", 32)
+    .attr("refY", 0)
+    .attr("orient", "auto")
+    .attr("markerWidth", 6)
+    .attr("markerHeight", 6)
+    .append("svg:path")
+    .attr("d", "M 0,-5 L 10 ,0 L 0,5")
+    .attr("fill", "#4edea3")
+    .style("opacity", 0.6);
+
+  const simulation = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.relation === 'IN_SECTOR' ? 180 : 250).strength(0.7))
+    .force("charge", d3.forceManyBody().strength(d => d.type === 'Sector' ? -5000 : -3000))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("collision", d3.forceCollide().radius(90))
+    .velocityDecay(0.4);
+
+  const linkGroups = {};
+  links.forEach(l => {
+    const sId = l.source.id || l.source;
+    const tId = l.target.id || l.target;
+    const key = [sId, tId].sort().join("|");
+    if (!linkGroups[key]) linkGroups[key] = [];
+    linkGroups[key].push(l);
+    l.linkIndex = linkGroups[key].length - 1;
+  });
+  links.forEach(l => {
+    const sId = l.source.id || l.source;
+    const tId = l.target.id || l.target;
+    const key = [sId, tId].sort().join("|");
+    l.totalLinks = linkGroups[key].length;
+  });
+
+  const link = g.append("g")
+    .selectAll("path")
+    .data(links)
+    .join("path")
+    .attr("class", "link-path")
+    .attr("fill", "none")
+    .attr("stroke", "#4edea3")
+    .attr("stroke-opacity", 0.4)
+    .attr("stroke-width", 1.5)
+    .attr("marker-end", "url(#arrowhead)")
+    .style("cursor", "pointer")
+    .on("click", (event, d) => {
+        event.stopPropagation();
+        selectLink(d);
+    });
+
+  const linkLabels = g.append("g")
+    .selectAll("text")
+    .data(links)
+    .join("text")
+    .attr("font-size", "7px")
+    .attr("fill", "#4edea3")
+    .attr("fill-opacity", 0.4)
+    .attr("text-anchor", "middle")
+    .attr("font-weight", "bold")
+    .text(d => d.relation || "");
+
+  const node = g.append("g")
+    .selectAll("g")
+    .data(nodes)
+    .join("g")
+    .attr("class", "node-group")
+    .style("cursor", "pointer")
+    .on("click", (event, d) => {
+        event.stopPropagation();
+        selectNode(d);
+    })
+    .call(d3.drag()
+      .on("start", dragstarted)
+      .on("drag", dragged)
+      .on("end", dragended));
+
+  node.append("circle")
+    .attr("r", 28)
+    .attr("fill", d => {
+        if (d.owned) return "rgba(78, 222, 163, 0.4)";
+        if (d.type === 'Ticker' || d.type === 'Stock') return "rgba(78, 222, 163, 0.15)";
+        if (d.type === 'Sector') return "rgba(5, 102, 217, 0.15)";
+        return "rgba(45, 52, 73, 0.6)";
+    })
+    .attr("stroke", d => {
+        if (d.owned) return "#4edea3";
+        if (d.type === 'Ticker' || d.type === 'Stock') return "#4edea3";
+        if (d.type === 'Sector') return "#0566d9";
+        return "#45464d";
+    })
+    .attr("stroke-width", d => d.owned ? 4 : 2);
+
+  node.append("text")
+    .attr("dy", 1)
+    .attr("font-size", "10px")
+    .attr("font-weight", "900")
+    .attr("text-anchor", "middle")
+    .attr("fill", d => (d.type === 'Ticker' || d.type === 'Stock') ? "#4edea3" : (d.type === 'Sector' ? "#adc6ff" : "#dae2fd"))
+    .text(d => d.id);
+
+  node.append("text")
+    .attr("dy", 14)
+    .attr("font-size", "7px")
+    .attr("text-anchor", "middle")
+    .attr("fill", "#dae2fd")
+    .attr("fill-opacity", 0.4)
+    .attr("font-weight", "bold")
+    .style("text-transform", "uppercase")
+    .text(d => d.type || "");
+
+  simulation.on("tick", () => {
+    link.attr("d", d => {
+        const dx = d.target.x - d.source.x, dy = d.target.y - d.source.y, dr = Math.sqrt(dx * dx + dy * dy);
+        const curveOffset = d.totalLinks > 1 ? (d.linkIndex - (d.totalLinks - 1) / 2) * 45 : 20; 
+        const mx = (d.source.x + d.target.x) / 2, my = (d.source.y + d.target.y) / 2;
+        const nx = (d.target.y - d.source.y) / dr, ny = (d.source.x - d.target.x) / dr;
+        const cx = mx + nx * curveOffset, cy = my + ny * curveOffset;
+        return `M${d.source.x},${d.source.y} Q${cx},${cy} ${d.target.x},${d.target.y}`;
+    });
+    node.attr("transform", d => `translate(${d.x},${d.y})`);
+    linkLabels.attr("x", d => (d.source.x + d.target.x) / 2).attr("y", d => (d.source.y + d.target.y) / 2);
+  });
+
+  document.getElementById('zoom-in').onclick = () => svg.transition().duration(300).call(zoom.scaleBy, 1.3);
+  document.getElementById('zoom-out').onclick = () => svg.transition().duration(300).call(zoom.scaleBy, 0.7);
+
+  function dragstarted(event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
+  function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+  function dragended(event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }
+};
+
+// ============================================================
+// LIVE SYNC & FORM HANDLERS
+// ============================================================
+(function initLiveLink() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.host}/ws`;
+  let socket;
+
+  function connect() {
+    socket = new WebSocket(wsUrl);
+    socket.onopen = () => console.log('✅ CairnIQ Live-Link: Graph Synchronized');
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'graph_update') {
+        const payload = data.data;
+        graphData.nodes = payload.nodes || [];
+        graphData.links = payload.links || payload.edges || [];
+        initGraph();
+        showToast("Intelligence Synchronized: Graph Updated.", "success");
+      }
+    };
+    socket.onclose = () => setTimeout(connect, 5000);
+  }
+  connect();
+})();
+
+function saveProfile() {
+  const updates = {
+    age: document.getElementById('profile-age').value,
+    annual_income: document.getElementById('profile-income').value,
+    risk_tolerance: document.getElementById('profile-risk').value,
+    retirement_age: document.getElementById('profile-retirement').value,
+    base_currency: document.getElementById('profile-currency').value
+  };
+  apiCall('/api/memory/profile', 'POST', { updates }, "Manual context update persisted.");
+}
+
+// The goal goes through its own endpoint, NOT /api/memory/profile: set_financial_goal
+// applies the typed contract (a blank field CLEARS that figure, a malformed one leaves
+// the existing figure standing so a typo cannot silently erase a goal). Writing these
+// through the generic profile update would store raw strings and skip all of it.
+function saveGoal() {
+  const read = (id) => {
+    const raw = document.getElementById(id).value.trim().replace(/[$,\s]/g, '');
+    return raw === '' ? null : raw;
+  };
+  const updates = {
+    target_low: read('goal-target-low'),
+    target_high: read('goal-target-high'),
+    horizon_years: read('goal-horizon'),
+    annual_contribution: read('goal-contribution')
+  };
+  apiCall('/api/memory/financial_goal', 'POST', { updates }, "Wealth goal saved.");
+}
+
+// Roadmap 3.7. A blank field CLEARS that rule rather than leaving a stale one
+// standing, because the sentinel reads this back verbatim during a crash — a
+// rule the user thought they had deleted must not resurface as their own words.
+function savePlaybook() {
+  const lines = (id) => document.getElementById(id).value
+    .split('\n').map(s => s.trim()).filter(Boolean);
+  const scalar = (id) => {
+    const v = document.getElementById(id).value.trim();
+    return v === '' ? null : v;
+  };
+  // "15% = deploy half the cash reserve" -> {drawdown_pct: 15, action: "..."}.
+  // A rung with no depth is DROPPED, never defaulted: guessing a level would put
+  // real money on a number nobody chose.
+  const levels = lines('pb-levels').map(line => {
+    const m = line.match(/^-?\s*([\d.]+)\s*%?\s*[=:\-]\s*(.+)$/);
+    return m ? { drawdown_pct: parseFloat(m[1]), action: m[2].trim() } : null;
+  }).filter(Boolean);
+
+  const updates = {
+    never_sell: lines('pb-never-sell').length ? lines('pb-never-sell') : null,
+    buy_first: lines('pb-buy-first').length ? lines('pb-buy-first') : null,
+    deployment_levels: levels.length ? levels : null,
+    rebalance_drift_pct: scalar('pb-drift'),
+    notes: scalar('pb-notes')
+  };
+  apiCall('/api/memory/drawdown_playbook', 'POST', { updates }, "Drawdown playbook saved.");
+}
+
+// Roadmap 2.2 / 4.4. A blank field CLEARS that cap — the store's own contract:
+// unstated means unconstrained, and nothing here or on the server substitutes a
+// figure. `acknowledge_unconstrained` is the separate answer to the separate
+// question, and it is sent on every save (true AND false) so unticking the box
+// withdraws the confirmation instead of silently leaving the old one standing.
+function saveRiskLimits() {
+  const scalar = (id) => {
+    const v = document.getElementById(id).value.trim().replace(/[%\s]/g, '');
+    return v === '' ? null : v;
+  };
+  const symbols = document.getElementById('rc-restricted').value
+    .split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  const updates = {
+    max_position_pct: scalar('rc-max-position'),
+    max_fund_position_pct: scalar('rc-max-fund'),
+    max_sector_pct: scalar('rc-max-sector'),
+    max_risk_per_trade_pct: scalar('rc-max-risk'),
+    restricted_symbols: symbols.length ? symbols : null,
+    acknowledge_unconstrained: document.getElementById('rc-ack').checked
+  };
+  // apiCall reloads on success, which re-renders the boxes from the server and
+  // re-runs loadRiskReadiness() — so the acknowledgement line comes back from
+  // the store rather than from what this function believes it just sent.
+  apiCall('/api/memory/risk_constraints', 'POST', { updates }, "Risk limits saved.");
+}
+
+// ── Target allocation (4.4's drift target) ────────────────────────────────
+// Accepts "SYMBOL 40", "SYMBOL, 40", "SYMBOL: 40" and "SYMBOL 40%", one per
+// line, because a person typing a sleeve list should not have to learn a syntax.
+// Anything unparseable is REPORTED rather than dropped: a silently skipped line
+// would store a mix that sums to 100% while missing a sleeve the user wrote.
+function parseTargetWeights(text) {
+  const weights = {};
+  const bad = [];
+  (text || '').split('\n').forEach(raw => {
+    const line = raw.trim();
+    if (!line) return;
+    const m = line.match(/^([A-Za-z0-9.\-]+)\s*[,:\s]\s*([0-9]*\.?[0-9]+)\s*%?$/);
+    if (!m) { bad.push(line); return; }
+    weights[m[1].toUpperCase()] = parseFloat(m[2]);
+  });
+  return { weights, bad };
+}
+
+// The running total, shown while typing. The server refuses a mix that does not
+// sum to 100 — this is so that refusal is never a surprise at save time.
+function renderTargetTotal() {
+  const el = document.getElementById('ta-total');
+  if (!el) return;
+  const { weights, bad } = parseTargetWeights(document.getElementById('ta-weights').value);
+  const names = Object.keys(weights);
+  if (!names.length && !bad.length) { el.textContent = ''; return; }
+  const total = names.reduce((a, k) => a + weights[k], 0);
+  const ok = Math.abs(total - 100) <= 0.5;
+  el.innerHTML =
+    `<span class="${ok ? 'text-primary' : 'text-[#e0b252]'} font-bold">${total.toFixed(2)}%</span>`
+    + `<span class="text-on-surface-variant/40"> across ${names.length} sleeve${names.length === 1 ? '' : 's'}`
+    + (ok ? '' : ' — must total 100%, or name the remainder as cash') + '</span>'
+    + (bad.length ? `<br><span class="text-error">Unreadable: ${bad.map(b => b.replace(/</g, '&lt;')).join(' · ')}</span>` : '');
+}
+
+function saveTargetAllocation() {
+  const { weights, bad } = parseTargetWeights(document.getElementById('ta-weights').value);
+  if (bad.length) {
+    showToast(`Could not read: ${bad[0]}. Use "SYMBOL 40", one per line.`, 'error');
+    return;
+  }
+  apiCall('/api/memory/target_allocation', 'POST', {
+    weights: Object.keys(weights).length ? weights : null,
+    note: document.getElementById('ta-note').value.trim(),
+  }, "Target allocation saved.");
+}
+
+// ============================================================
+// ACCOUNT JURISDICTIONS (Roadmap 4.7a)
+// ============================================================
+// Rows are drawn from GET /api/memory/account_jurisdictions, which lists the
+// accounts the PORTFOLIO names — never the store's own keys. A store keyed by
+// free text can be full and match nothing, and from inside the store that looks
+// identical to working.
+//
+// Blank means "keep whatever the account name implies", so the fallback stays
+// visible rather than being something you have to know about. The placeholder
+// on each row shows what that inference currently is.
+
+const AJ_SOURCE_LABEL = {
+  stated: 'you stated this',
+  declared_unknown: 'you answered: no country',
+  inferred_from_name: 'guessed from the name',
+  unknown: 'nothing on file — checks skipped',
+};
+
+async function loadAccountJurisdictions() {
+  const box = document.getElementById('aj-rows');
+  if (!box) return;
+  try {
+    const res = await fetch('/api/memory/account_jurisdictions');
+    const data = await res.json();
+    const accounts = data.accounts || [];
+    const note = document.getElementById('aj-note');
+    if (note) note.value = data.note || '';
+
+    if (!accounts.length) {
+      box.replaceChildren(Object.assign(document.createElement('p'), {
+        className: 'text-[10px] text-on-surface-variant/50',
+        textContent: 'No accounts found in your portfolio, so there is nothing to place.'
+      }));
+      return;
+    }
+
+    box.replaceChildren(...accounts.map(a => {
+      const row = document.createElement('div');
+      row.className = 'flex items-center justify-between gap-3';
+
+      const left = document.createElement('div');
+      left.className = 'min-w-0';
+      const name = document.createElement('p');
+      name.className = 'text-sm font-headline text-on-surface truncate';
+      name.textContent = a.account;
+      const sub = document.createElement('p');
+      sub.className = 'text-[10px] text-on-surface-variant/50';
+      // A taxable account is not an unanswered question: income taxed at the
+      // marginal rate has no shelter rule that could be got wrong.
+      sub.textContent = a.jurisdiction_needed
+        ? [a.shelter || a.tax_class, AJ_SOURCE_LABEL[a.source] || a.source].join(' · ')
+        : (a.tax_class || 'TAXABLE') + ' · no country needed';
+      left.append(name, sub);
+
+      const input = document.createElement('input');
+      input.className = 'aj-input bg-transparent border border-outline-variant/20 rounded-lg px-2 py-1 '
+        + 'text-sm font-mono text-on-surface w-28 text-center focus:ring-0 flex-shrink-0';
+      input.setAttribute('list', 'aj-codes');
+      input.maxLength = 7;
+      input.dataset.account = a.account;
+      input.value = a.stated || '';
+      input.placeholder = a.inferred_from_name || '—';
+      input.disabled = !a.jurisdiction_needed;
+      if (!a.jurisdiction_needed) input.classList.add('opacity-30');
+
+      row.append(left, input);
+      return row;
+    }));
+
+    // The two states that look fine in the summary and are not.
+    const warn = document.getElementById('aj-warnings');
+    if (warn) {
+      const lines = [];
+      if ((data.stated_unmatched || []).length) {
+        lines.push('Stored for an account your portfolio no longer names: '
+          + data.stated_unmatched.join(' · ')
+          + '. Renamed or closed — these entries do nothing.');
+      }
+      const conflicts = accounts.filter(a => a.conflict).map(a => a.account);
+      if (conflicts.length) {
+        lines.push('You stated a country that disagrees with the account name: '
+          + conflicts.join(' · ')
+          + '. Yours is in force; one of the two is wrong.');
+      }
+      warn.textContent = lines.join('  ');
+    }
+  } catch (e) {
+    box.replaceChildren(Object.assign(document.createElement('p'), {
+      className: 'text-[10px] text-error',
+      textContent: 'Accounts could not be read. Nothing is implied about your stores by this failure.'
+    }));
+  }
+}
+
+function saveAccountJurisdictions() {
+  const accounts = {};
+  document.querySelectorAll('.aj-input').forEach(el => {
+    if (el.disabled) return;
+    const value = (el.value || '').trim().toUpperCase();
+    // A blank is sent as an empty string rather than skipped: the store reads it
+    // as "remove this account", which is how a stated country is taken back.
+    accounts[el.dataset.account] = value;
+  });
+  const noteEl = document.getElementById('aj-note');
+  // apiCall reloads on success, which re-runs loadAccountJurisdictions and is
+  // why nothing re-renders here: a local re-render would show the values we
+  // SENT, not the ones the store accepted.
+  apiCall('/api/memory/account_jurisdictions', 'POST', {
+    accounts: Object.keys(accounts).length ? accounts : null,
+    note: noteEl ? noteEl.value.trim() : '',
+  }, "Account jurisdictions saved.");
+}
+
+// Which box drives which axis. The only thing this file knows about the
+// consequences — the sentences themselves are server prose, fetched below.
+const RISK_LIMIT_FIELDS = {
+  'rc-max-position': 'max_position_pct',
+  'rc-max-fund': 'max_fund_position_pct',
+  'rc-max-sector': 'max_sector_pct',
+  'rc-max-risk': 'max_risk_per_trade_pct'
+};
+let riskConsequenceCopy = {};
+
+// "What this box costs" AS YOU TYPE. The readiness report below says the same
+// thing about what is currently saved; this says it about what is currently on
+// screen, which is the moment the answer is actually being decided.
+function renderRiskConsequences() {
+  const box = document.getElementById('rc-consequences');
+  if (!box) return;
+  const lines = [];
+  Object.keys(RISK_LIMIT_FIELDS).forEach(id => {
+    const el = document.getElementById(id);
+    if (!el || el.value.trim() !== '') return;   // a stated cap costs nothing
+    const text = riskConsequenceCopy[RISK_LIMIT_FIELDS[id]];
+    if (text) lines.push(text);
+  });
+  box.replaceChildren(...lines.map(text => {
+    const p = document.createElement('p');
+    p.className = 'text-[10px] text-on-surface-variant/70 leading-snug';
+    p.textContent = text;
+    return p;
+  }));
+}
+
+// The acknowledgement's own state, which is NOT derivable from the input boxes:
+// four blanks look identical whether or not the user has confirmed them.
+async function loadRiskReadiness() {
+  const line = document.getElementById('rc-ack-state');
+  const box = document.getElementById('rc-ack');
+  if (!line || !box) return;
+  try {
+    const res = await fetch('/api/memory/risk_constraints');
+    const data = await res.json();
+    const r = data.execution_readiness || {};
+    const confirmed = r.unconstrained_by_choice || [];
+    box.checked = confirmed.length > 0 || !!r.acknowledged_at;
+    if (r.execution_ready) {
+      line.textContent = confirmed.length
+        ? "Execution-ready. Confirmed unlimited on " + confirmed.length
+          + (confirmed.length === 1 ? " axis" : " axes")
+          + (r.acknowledged_at ? " on " + r.acknowledged_at.slice(0, 10) : "") + "."
+        : "Execution-ready. Every axis carries a limit you stated.";
+    } else {
+      // Server text, verbatim: the sentence the pre-trade check and the
+      // optimizer report is the sentence shown here, so the page cannot
+      // describe this state differently from the engines that act on it.
+      line.textContent = r.note || "";
+    }
+  } catch (e) {
+    line.textContent = "";
+  }
+}
+
+async function createNode() {
+    const btn = document.querySelector('button[onclick="createNode()"]');
+    const nameInput = document.getElementById('node-name');
+    const typeInput = document.getElementById('node-type');
+    const name = nameInput.value.trim();
+    const type = typeInput.value;
+    if (!name) return;
+    btn.disabled = true;
+    const originalText = btn.innerText;
+    btn.innerText = 'Syncing...';
+    try {
+        const res = await fetch('/api/memory/graph/node', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, type })
+        });
+        if (res.ok) {
+            nameInput.value = '';
+            showToast(`Entity "${name}" linked to Knowledge Base.`, 'success');
+            setTimeout(() => location.reload(), 800);
+        }
+    } finally {
+        btn.disabled = false;
+        btn.innerText = originalText;
+    }
+}
+
+async function createEdge() {
+    const btn = document.querySelector('button[onclick="createRelation()"]');
+    const source = document.getElementById('rel-source').value;
+    const target = document.getElementById('rel-target').value;
+    const relation = document.getElementById('rel-type').value;
+    
+    if (!source || !target || !relation) return;
+    btn.disabled = true;
+    try {
+        const res = await fetch('/api/memory/graph/edge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source, target, relation })
+        });
+        if (res.ok) {
+            showToast('Strategic relationship established.', 'success');
+            setTimeout(() => location.reload(), 800);
+        }
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function deleteSelectedNode() {
+  if (!selectedNode) return;
+  const confirmed = await cairnModal.show({
+    title: "Delete Entity?",
+    message: `Stop tracking "${selectedNode.id}"? This will also remove all connections.`,
+    icon: "warning", color: "error"
+  });
+  if (confirmed) apiCall(`/api/memory/graph/node/${encodeURIComponent(selectedNode.id)}`, 'DELETE', null, "Entity purged.");
+}
+
+async function deleteSelectedLink() {
+  if (!selectedLink) return;
+  const confirmed = await cairnModal.show({
+    title: "Break Connection?",
+    message: "Delete this specific relationship?",
+    icon: "link_off", color: "error"
+  });
+  if (confirmed) {
+    const source = selectedLink.source.id || selectedLink.source;
+    const target = selectedLink.target.id || selectedLink.target;
+    apiCall('/api/memory/graph/edge', 'DELETE', { source, target, relation: selectedLink.relation }, "Relationship terminated.");
+  }
+}
+
+function deleteThesis(id) {
+  cairnModal.show({ title: 'Deactivate Thesis', message: 'Purge this thesis?', icon: 'warning', color: 'error' }).then(c => { if(c) apiCall(`/api/memory/theses/${id}`, 'DELETE'); });
+}
+
+function deleteLesson(index) {
+  cairnModal.show({ title: 'Erase Instruction', message: 'Remove rule?', icon: 'delete', color: 'error' }).then(c => { if(c) apiCall(`/api/memory/lessons/${index}`, 'DELETE'); });
+}
+
+function logLesson() {
+  cairnModal.show({ title: 'New Instruction', message: 'Record a new rule.', type: 'prompt', placeholder: 'e.g. Always verify...', icon: 'rule', color: 'error' }).then(t => { if(t) apiCall('/api/memory/lessons', 'POST', { text: t }); });
+}
+
+// The human-confirmation gate for auto-drafted lessons (roadmap 1.4). Nothing
+// drafted from feedback reaches a prompt until this fires. Leaving the box empty
+// applies the draft as written; typing replaces the wording.
+function confirmDraftedLesson(id) {
+  cairnModal.show({
+    title: 'Apply Instruction',
+    message: 'This becomes a standing rule in every prompt. Leave the box empty to apply the draft as written, or type a replacement.',
+    type: 'prompt',
+    placeholder: 'Instruction text',
+    icon: 'rule',
+    color: 'primary',
+    confirmText: 'Apply'
+  }).then(t => {
+    const body = (t && t.trim()) ? { text: t.trim() } : null;
+    apiCall(`/api/memory/lessons/pending/${id}/confirm`, 'POST', body, 'Instruction applied.');
+  });
+}
+
+function discardDraftedLesson(id) {
+  cairnModal.show({ title: 'Discard Draft', message: 'Drop this drafted instruction?', icon: 'delete', color: 'error' })
+    .then(c => { if(c) apiCall(`/api/memory/lessons/pending/${id}`, 'DELETE', null, 'Draft discarded.'); });
+}
+
+function deleteFact(index) {
+  cairnModal.show({ title: 'Purge Context', message: 'Wipe memory fragment?', icon: 'person_remove', color: 'error' }).then(c => { if(c) apiCall(`/api/memory/facts/${index}`, 'DELETE'); });
+}
+
+function addMemory() {
+  cairnModal.show({ title: 'Add Memory Fragment', message: 'Enter new fact.', type: 'prompt', icon: 'person_pin', color: 'primary' }).then(t => { if(t) apiCall('/api/memory/facts', 'POST', { text: t }); });
+}
+
+function createRelation() {
+  cairnModal.show({ title: 'New Relationship', message: 'Describe logic link.', type: 'prompt', icon: 'account_tree', color: 'primary' }).then(i => {
+    if (i) {
+      const parts = i.split('->').map(p => p.trim());
+      if (parts.length === 3) apiCall('/api/memory/graph/edge', 'POST', { source: parts[0], target: parts[1], relation: parts[2] });
+      else showToast("Format: Source -> Target -> Relation", "error");
+    }
+  });
+}
+
+// ============================================================
+// PROFILE READINESS (Roadmap 2.8)
+// ============================================================
+// Renders GET /api/profile_readiness. Everything shown is read back from the
+// server payload with textContent — this block never composes a value of its
+// own, which is the whole contract of the item.
+// One tone map, read by the report rows and by the playbook card's own chip.
+// Two copies would drift, and a card showing a different colour from the row
+// describing it is the surface contradicting itself about the user's data.
+const READINESS_TONE = {
+  set: "text-primary",
+  partial: "text-amber-400",
+  empty: "text-error",
+  unreadable: "text-on-surface-variant"
+};
+
+function readinessValueText(value) {
+  if (Array.isArray(value)) return value.length + (value.length === 1 ? " entry" : " entries");
+  if (value && typeof value === "object") return "on file";
+  return String(value);
+}
+
+// One mark per required field: filled when stated, hollow when blank. This is
+// the same fact the "Not stated — a, b, c" line carries, at a glance and without
+// the prose — four blanks and one blank no longer read the same length. Derived
+// from `missing` rather than from `stated`, because the ratings row's answer is
+// measured into `observed` and a strip keyed on `stated` would show it as blank
+// even once the pool fills.
+function readinessPips(item) {
+  const strip = document.createElement("div");
+  strip.className = "flex items-center gap-1 shrink-0";
+  const pip = (cls, title) => {
+    const node = document.createElement("span");
+    node.className = "w-4 h-1.5 rounded-sm " + cls;
+    node.title = title;
+    strip.appendChild(node);
+  };
+
+  if (item.status === "unreadable") {
+    pip("readiness-pip-unknown", "This store could not be read");
+    return strip;
+  }
+
+  const missing = item.missing || [];
+  // Three states, not two. A field the user confirmed they want left open is
+  // neither stated (no figure exists) nor blank (the question is closed), and
+  // drawing it as either would misreport their own answer back to them.
+  const answered = item.answered_blank || [];
+  (item.required || []).forEach(field => {
+    if (answered.indexOf(field) !== -1) {
+      pip("bg-primary/20 border border-primary/40", field + " — no limit, by your choice");
+    } else if (missing.indexOf(field) === -1) {
+      pip("bg-primary", field + " — stated");
+    } else {
+      pip("border border-dashed border-on-surface-variant/40", field + " — blank");
+    }
+  });
+  // Optional fields trail the required ones at half weight: present and worth
+  // showing, but never a gap, so they must not read as one more box to fill.
+  (item.optional_present || []).forEach(field => {
+    pip("bg-primary/40", field + " — stated, optional");
+  });
+  return strip.childElementCount ? strip : null;
+}
+
+function readinessRow(item) {
+  const make = (tag, cls, text) => {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined && text !== null) node.textContent = text;
+    return node;
+  };
+  const tone = READINESS_TONE[item.status] || "text-on-surface-variant";
+
+  const row = make("div", "bg-surface-container-high p-3 rounded-xl border border-outline-variant/10");
+  const head = make("div", "flex items-baseline justify-between gap-2");
+  head.appendChild(make("p", "text-[10px] uppercase tracking-widest text-on-surface-variant font-bold", item.label));
+  const right = make("div", "flex items-center gap-2 shrink-0");
+  const pips = readinessPips(item);
+  if (pips) right.appendChild(pips);
+  // The status word stays beside the marks rather than being replaced by them:
+  // `unreadable` has no field strip to express it, and the playbook card's own
+  // chip mirrors this word.
+  right.appendChild(make("p", "text-[10px] font-black uppercase tracking-widest " + tone, item.status));
+  head.appendChild(right);
+  row.appendChild(head);
+
+  const pairs = (obj) => Object.keys(obj || {}).map(k => k + ": " + readinessValueText(obj[k])).join("  |  ");
+  const stated = pairs(item.stated);
+  if (stated) row.appendChild(make("p", "text-[10px] text-on-surface mt-1 break-words", "On file — " + stated));
+  const observed = pairs(item.observed);
+  if (observed) row.appendChild(make("p", "text-[10px] text-on-surface mt-1 break-words", "Measured — " + observed));
+
+  // Collapsed by default. The amount of prose here is proportional to the
+  // number of blanks, so a fresh profile — the reader who knows least — used to
+  // get every field's consequence at once. `cost` is the one line that always
+  // shows; the per-field detail is a click away and unchanged behind it.
+  if (item.cost) row.appendChild(make("p", "text-[10px] text-on-surface-variant mt-1 leading-snug", item.cost));
+
+  const entryLine = () => make("p", "text-[9px] text-on-surface-variant/40 italic mt-1", item.entry);
+
+  // Nothing missing means nothing to expand: a row that is fully stated shows
+  // where it lives and stops. Offering "what this costs" on it would be the nag
+  // this surface refuses to be.
+  if (!(item.inert || []).length) {
+    if (item.entry) row.appendChild(entryLine());
+    return row;
+  }
+
+  const detail = make("div", "mt-1");
+  if ((item.missing || []).length) {
+    detail.appendChild(make("p", "text-[10px] text-on-surface-variant/70", "Not stated — " + item.missing.join(", ")));
+  }
+  item.inert.forEach(line => {
+    detail.appendChild(make("p", "text-[10px] text-on-surface-variant/70 leading-snug mt-1", line));
+  });
+  if (item.entry) detail.appendChild(entryLine());
+
+  const wrap = make("details", "mt-1");
+  const toggle = make("summary", "readiness-toggle text-[10px] text-on-surface-variant/50 cursor-pointer list-none marker:content-[''] hover:text-on-surface-variant");
+  toggle.textContent = "What this costs, field by field";
+  wrap.appendChild(toggle);
+  wrap.appendChild(detail);
+  row.appendChild(wrap);
+  return row;
+}
+
+// The capability switchboard. Lit chips first, then dark: the lit set is the
+// smaller and more surprising half on a fresh profile, and burying it under six
+// dark chips would make this look like a list of failures rather than a state.
+function renderSwitchboard(caps) {
+  const box = document.getElementById('readiness-switchboard');
+  if (!box) return;
+  const chip = (name, live) => {
+    const node = document.createElement("span");
+    node.className = "text-[10px] px-2 py-0.5 rounded-full border " + (live
+      ? "border-primary/30 bg-primary/10 text-primary"
+      : "border-dashed border-on-surface-variant/25 text-on-surface-variant/50");
+    node.textContent = name;
+    node.title = live ? "Live — the stores it reads are on file" : "Dark while the stores it reads are blank";
+    return node;
+  };
+  box.replaceChildren(
+    ...(caps.live || []).map(name => chip(name, true)),
+    ...(caps.dark || []).map(name => chip(name, false))
+  );
+}
+
+async function loadReadiness() {
+  const box = document.getElementById('readiness-content');
+  if (!box) return;
+  try {
+    const res = await fetch('/api/profile_readiness');
+    const data = await res.json();
+    const rows = (data.inputs || []).map(readinessRow);
+    box.replaceChildren(...rows);
+    const counts = data.counts || {};
+    const caps = data.capabilities || {};
+    renderSwitchboard(caps);
+    const summary = document.getElementById('readiness-summary');
+    if (summary) {
+      // Counted off the DEDUPED capability set, not off `inert_count`: that
+      // figure is one consequence sentence per blank field, and three playbook
+      // fields name the same alert — reporting it as a capability count
+      // overstated what is actually dark.
+      const live = (caps.live || []).length;
+      let line = counts.set + " of " + counts.total + " stated  |  "
+        + live + " of " + (caps.total || 0)
+        + (caps.total === 1 ? " capability live" : " capabilities live");
+      if (caps.unverified_stores) {
+        line += "  |  " + caps.unverified_stores
+          + (caps.unverified_stores === 1 ? " store unverified" : " stores unverified");
+      }
+      summary.textContent = line;
+    }
+    const contract = document.getElementById('readiness-contract');
+    if (contract) contract.textContent = data.contract || "";
+    // Same payload, rendered once more on the editors themselves, so a card you
+    // type into carries its own state instead of only the report below.
+    const stampCard = (elementId, rowKey) => {
+      const chip = document.getElementById(elementId);
+      const row = (data.inputs || []).find(i => i.key === rowKey);
+      if (!chip || !row) return;
+      chip.textContent = row.status;
+      chip.className = "text-[10px] font-black uppercase tracking-widest "
+        + (READINESS_TONE[row.status] || "text-on-surface-variant");
+      chip.title = row.cost || "";
+    };
+    stampCard('pb-status', 'drawdown_playbook');
+    stampCard('rc-status', 'risk_constraints');
+    stampCard('ta-status', 'target_allocation');
+    stampCard('aj-status', 'account_jurisdictions');
+    // The limits editor borrows this payload's per-field prose for its live
+    // preview rather than carrying a second copy of the same sentences.
+    const rcRow = (data.inputs || []).find(i => i.key === 'risk_constraints');
+    if (rcRow) {
+      riskConsequenceCopy = rcRow.consequence_by_field || {};
+      renderRiskConsequences();
+    }
+  } catch (e) {
+    box.replaceChildren();
+    // The switchboard clears with it. A stale row of lit chips beside a failure
+    // message would be the surface asserting a capability is live off a payload
+    // that never arrived.
+    const board = document.getElementById('readiness-switchboard');
+    if (board) board.replaceChildren();
+    box.appendChild(Object.assign(document.createElement('p'), {
+      className: 'text-[10px] text-error',
+      textContent: 'Readiness could not be read. Nothing is implied about your stores by this failure.'
+    }));
+  }
+}
+
+// ============================================================
+// OBSERVATION LOG (Roadmap 1.7)
+// ============================================================
+// Renders GET /api/observations. Nothing here is in effect: these are raw
+// behavioural observations, and the only path to a prompt runs through a drafted
+// rule in My Instructions that you confirm. The counts are shown even when they
+// are zero — a log nobody writes to and a log nobody reads are the same silence
+// otherwise, which is what this item was opened over.
+const OBSERVATION_LABELS = {
+  asked: "asked about",
+  pushback: "corrected me",
+  decline: "declined",
+  rec_issued: "calls made",
+  rec_followed: "acted on",
+  rec_ignored: "not acted on"
+};
+
+function observationChip(kind, count) {
+  const chip = document.createElement('div');
+  chip.className = "bg-surface-container-high px-3 py-1.5 rounded-lg border border-outline-variant/10";
+  const value = document.createElement('span');
+  value.className = "text-[11px] font-black " + (count ? "text-primary" : "text-on-surface-variant/40");
+  value.textContent = String(count);
+  const label = document.createElement('span');
+  label.className = "text-[10px] text-on-surface-variant ml-1.5";
+  label.textContent = OBSERVATION_LABELS[kind] || kind;
+  chip.appendChild(value);
+  chip.appendChild(label);
+  return chip;
+}
+
+function observationRow(item) {
+  const row = document.createElement('div');
+  row.className = "flex items-baseline gap-2 text-[10px]";
+  const when = document.createElement('span');
+  when.className = "text-on-surface-variant/40 shrink-0";
+  when.textContent = String(item.timestamp || "").slice(0, 10);
+  const kind = document.createElement('span');
+  kind.className = "font-black uppercase tracking-widest shrink-0 "
+    + (item.kind === "pushback" || item.kind === "rec_ignored" ? "text-amber-400" : "text-on-surface-variant/60");
+  kind.textContent = OBSERVATION_LABELS[item.kind] || item.kind;
+  const body = document.createElement('span');
+  body.className = "text-on-surface/70 truncate";
+  const tickers = (item.tickers || []).join(", ");
+  body.textContent = [tickers, item.span].filter(Boolean).join(" — ");
+  row.appendChild(when);
+  row.appendChild(kind);
+  row.appendChild(body);
+  return row;
+}
+
+async function loadObservations() {
+  const counts = document.getElementById('observations-counts');
+  const recent = document.getElementById('observations-recent');
+  const summary = document.getElementById('observations-summary');
+  if (!counts || !recent) return;
+  try {
+    const res = await fetch('/api/observations');
+    const data = await res.json();
+    const stats = data.stats || {};
+    const byKind = stats.by_kind || {};
+    counts.replaceChildren(...Object.keys(byKind).map(k => observationChip(k, byKind[k])));
+    recent.replaceChildren(...(data.recent || []).map(observationRow));
+    if (!(data.recent || []).length) {
+      recent.appendChild(Object.assign(document.createElement('p'), {
+        className: 'text-[10px] text-on-surface-variant/40 italic',
+        textContent: 'Nothing observed yet. Rows appear here after your next chat turn.'
+      }));
+    }
+    if (summary) {
+      summary.textContent = stats.unconsolidated + " of " + stats.gate_n + " toward the next pass"
+        + (stats.last_consolidated_at ? "  |  last run " + String(stats.last_consolidated_at).slice(0, 10) : "  |  never run");
+    }
+    const contract = document.getElementById('observations-contract');
+    if (contract) contract.textContent = data.contract || "";
+  } catch (e) {
+    counts.replaceChildren();
+    recent.replaceChildren(Object.assign(document.createElement('p'), {
+      className: 'text-[10px] text-error',
+      textContent: 'The observation log could not be read. Nothing is implied about its contents by this failure.'
+    }));
+  }
+}
+
+async function consolidateObservations() {
+  const button = document.getElementById('observations-consolidate');
+  if (button) { button.disabled = true; button.textContent = 'Consolidating...'; }
+  try {
+    const res = await fetch('/api/observations/consolidate', { method: 'POST' });
+    const report = await res.json();
+    // Report what happened, including "it drafted nothing" — the honest and most
+    // common outcome. A pass that finds no durable pattern has not failed.
+    showToast(report.reason || 'Consolidation finished.', report.drafted ? 'success' : 'error');
+    if (report.drafted) { setTimeout(() => location.reload(), 1200); }
+  } catch (e) {
+    showToast('Consolidation could not run.', 'error');
+  } finally {
+    if (button) { button.disabled = false; button.textContent = 'Consolidate now'; }
+    loadObservations();
+  }
+}
+
+// --- Tabs -------------------------------------------------------------------
+// Same pattern as alerts.html, generalised to N tabs so the active/idle class
+// pair lives in one place instead of being retyped per branch.
+const TAB_ACTIVE = 'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all bg-surface-container-high text-primary border border-primary/30';
+const TAB_IDLE = 'flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-high/50';
+const CONTEXT_TABS = ['profile', 'learned', 'graph'];
+
+function switchTab(tab) {
+  if (!CONTEXT_TABS.includes(tab)) tab = 'profile';
+  CONTEXT_TABS.forEach((name) => {
+    const btn = document.getElementById(`tab-btn-${name}`);
+    const view = document.getElementById(`view-${name}`);
+    if (btn) btn.className = name === tab ? TAB_ACTIVE : TAB_IDLE;
+    if (view) view.classList.toggle('hidden', name !== tab);
+  });
+  // Every mutation on this page ends in location.reload(). Without this the
+  // reload after "Create Node" would drop the user back on the profile tab.
+  try { sessionStorage.setItem('cairniq.contextTab', tab); } catch (e) { /* storage blocked */ }
+  if (tab === 'graph') ensureGraph();
+}
+
+// initGraph() sizes the SVG from the canvas's measured box, so it can only run
+// once that box is real — and the moment that happens is genuinely unpredictable:
+// Tailwind applies its styles AFTER DOMContentLoaded (measuring there reads 0x0
+// and yields a viewBox of "0 0 0 0" — an SVG in the DOM but invisible), and a
+// hidden tab measures 0x0 too.
+//
+// This used to hang off a single ResizeObserver. That is one point of failure for
+// something with no visible fallback: if it does not fire, there is no graph at
+// all and nothing says why. So the build is driven by several independent paths —
+// tab show, animation-frame retry, resize, and the observer — all funnelling
+// through here. initGraph() is idempotent (it clears its own SVG first), so extra
+// calls are wasted work at worst.
+let graphRetries = 0;
+function ensureGraph() {
+  const el = document.getElementById('graph-canvas');
+  if (!el) return;
+  if (el.clientWidth && el.clientHeight) { graphRetries = 0; initGraph(); return; }
+  // Box not real yet (styles still landing, or tab mid-reveal). Try again next
+  // frame rather than assuming some other trigger will come along. Capped so a
+  // permanently-hidden canvas cannot spin frames forever.
+  if (graphRetries++ < 60) requestAnimationFrame(ensureGraph);
+}
+
+function watchGraphContainer() {
+  const el = document.getElementById('graph-canvas');
+  if (!el) return;
+  // Retained deliberately: an unreferenced ResizeObserver has been collected by
+  // some engines, which silently removes the trigger it exists to provide.
+  if (typeof ResizeObserver !== 'undefined') {
+    let lastBox = '';
+    window.__graphResizeObserver = new ResizeObserver(() => {
+      if (!el.clientWidth || !el.clientHeight) return;  // hidden — leave the SVG alone
+      const box = `${el.clientWidth}x${el.clientHeight}`;
+      if (box === lastBox) return;
+      lastBox = box;
+      initGraph();
+    });
+    window.__graphResizeObserver.observe(el);
+  }
+  // Independent of the observer, and of whether it fired.
+  window.addEventListener('resize', () => {
+    if (el.clientWidth && el.clientHeight) initGraph();
+  });
+}
+
+function activeContextTab() {
+  try { return sessionStorage.getItem('cairniq.contextTab') || 'profile'; }
+  catch (e) { return 'profile'; }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const currencySelect = document.getElementById('profile-currency');
+    const incomeLabel = document.getElementById('profile-income-label');
+    const syncIncomeLabel = () => {
+        if (currencySelect && incomeLabel) {
+            incomeLabel.textContent = `Annual Income (${currencySelect.value || 'USD'})`;
+        }
+    };
+    syncIncomeLabel();
+    if (currencySelect) currencySelect.addEventListener('change', syncIncomeLabel);
+    loadReadiness();
+    loadRiskReadiness();
+    loadAccountJurisdictions();
+    Object.keys(RISK_LIMIT_FIELDS).forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', renderRiskConsequences);
+    });
+    loadObservations();
+    // Watchers first, so the observer is already attached when switchTab()
+    // reveals a tab and changes the canvas box.
+    watchGraphContainer();
+    switchTab(activeContextTab());
+    // Last resort: by load, styles have definitely landed. Harmless if the graph
+    // is already drawn (initGraph clears and redraws), skipped if it is hidden.
+    window.addEventListener('load', () => {
+        const v = document.getElementById('view-graph');
+        if (v && !v.classList.contains('hidden')) ensureGraph();
+    });
+});
+</script>
+
+
+<style>
+/* Markdown styles */
+.markdown-content p { margin-bottom: 1rem; color: #b9c8de; }
+.markdown-content blockquote { padding-left: 1rem; border-left: 4px solid #4edea3; color: #b9c8de; font-style: italic; }
+.markdown-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; color: #b9c8de; }
+.markdown-content li { margin-bottom: 0.5rem; }
+.markdown-content strong { color: #4edea3; }
+.markdown-content h1, .markdown-content h2, .markdown-content h3, .markdown-content h4 { color: #dae2fd; font-family: 'Manrope', sans-serif; font-weight: bold; margin-top: 1.5rem; margin-bottom: 0.5rem;}
+
+/* Readiness disclosure. The default marker is suppressed so the row keeps its
+   type scale, which leaves the summary reading as one more line of prose — this
+   caret is what says it opens. */
+.readiness-toggle::before { content: "\25B8"; display: inline-block; width: 0.9em; }
+details[open] > .readiness-toggle::before { content: "\25BE"; }
+
+/* An unreadable store's field mark. Hatched rather than a point on the
+   blank-to-stated ramp on purpose: "could not be read" is off that axis
+   entirely, and any position on it would assert a fact nobody verified. */
+.readiness-pip-unknown {
+  border: 1px solid rgba(218, 226, 253, 0.25);
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(218, 226, 253, 0.3),
+    rgba(218, 226, 253, 0.3) 1.5px,
+    transparent 1.5px,
+    transparent 3.5px
+  );
+}
+</style>
+{% endblock %}

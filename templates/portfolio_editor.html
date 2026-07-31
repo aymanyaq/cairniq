@@ -1,0 +1,1672 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+    <!-- Unified CairnIQ Header -->
+    <header class="flex justify-between items-center px-8 h-16 w-full bg-[#131b2e] font-['Manrope'] font-bold uppercase tracking-widest border-b border-[#45464d]/15 shrink-0 z-10">
+      <div class="flex items-center gap-6">
+        <span class="text-xl font-extrabold text-[#dae2fd]">CAIRNIQ // PORTFOLIO EDITOR</span>
+      </div>
+    </header>
+
+    <!-- Content Workspace -->
+    <div class="flex-1 overflow-hidden flex flex-col">
+      <!-- Breadcrumbs & Stats Bar -->
+      <section class="px-6 py-3 flex justify-between items-center bg-[#131b2e]/30 border-b border-outline-variant/5">
+        <div class="flex items-center gap-6">
+          <nav class="flex items-center text-[9px] uppercase tracking-[0.2em] text-on-surface-variant/40 font-bold">
+            <span class="hover:text-primary transition-colors cursor-pointer">ADMIN</span>
+            <span class="mx-2 material-symbols-outlined text-[10px]" data-icon="chevron_right">chevron_right</span>
+            <span class="text-primary/60">PORTFOLIO_ENGINE</span>
+          </nav>
+          <div class="h-4 w-px bg-outline-variant/10"></div>
+          <div class="flex items-center gap-4 text-[10px] font-mono">
+            <div class="flex items-center gap-2">
+              <span class="text-on-surface-variant/40">MV:</span>
+              <span class="text-primary font-bold">{{ total_value_cad }}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-on-surface-variant/40">RETURN:</span>
+              <span class="text-secondary font-bold">{{ percent_return }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <!-- Save Changes Button -->
+          <button id="save-portfolio-btn" onclick="savePortfolio()" class="flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-[10px] font-black uppercase tracking-[0.2em] text-[#131b2e] hover:bg-primary/90 hover:scale-[1.02] shadow-lg shadow-primary/10 transition-all cursor-pointer">
+            <span class="material-symbols-outlined text-sm font-black" data-icon="save">save</span>
+            Save Changes
+          </button>
+          <div class="h-4 w-px bg-outline-variant/10"></div>
+          
+          <!-- Filter Search Input (Hidden by default) -->
+          <div id="filter-container" class="flex items-center bg-surface-container-highest/30 border border-outline-variant/10 rounded-lg px-2 overflow-hidden w-0 transition-all duration-300 opacity-0">
+            <span class="material-symbols-outlined text-xs text-on-surface-variant/40" data-icon="search">search</span>
+            <input type="text" id="portfolio-filter" placeholder="Filter symbol, name, or source..." 
+              class="bg-transparent border-none text-[10px] text-[#dae2fd] focus:ring-0 w-40 py-1 placeholder-on-surface-variant/20" />
+          </div>
+          <button id="toggle-filter" class="p-2 text-on-surface-variant/60 hover:text-primary transition-colors cursor-pointer" title="Toggle Filter">
+            <span class="material-symbols-outlined text-lg" data-icon="filter_list">filter_list</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Strategic Spreadsheet UI -->
+      <section class="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
+        <!-- Toast Notification Container -->
+        <div id="toast-notification" class="fixed top-20 right-6 z-50 transform translate-y-2 opacity-0 pointer-events-none transition-all duration-300 flex items-center gap-3 px-6 py-4 rounded-xl bg-[#171f33]/90 border border-outline-variant/20 backdrop-blur-xl shadow-2xl">
+          <span id="toast-icon" class="material-symbols-outlined text-lg">info</span>
+          <span id="toast-message" class="text-xs font-semibold tracking-wide text-on-surface">Saving...</span>
+        </div>
+
+        {# Positions the engine holds units for but cannot price. They are excluded from
+           the total in the header above, so that figure is short by however much these
+           are worth — which is exactly what cannot be said, since nobody knows. Named
+           individually: "1 holding excluded" would tell the holder something is wrong
+           without telling them which row to open. #}
+        {% if unvalued_holdings %}
+        <div class="mb-4 rounded-2xl border border-error/40 bg-error/5 px-5 py-4 flex items-start gap-3">
+          <span class="material-symbols-outlined text-error text-lg mt-0.5" data-icon="error">error</span>
+          <div class="space-y-1.5">
+            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-error">
+              {{ unvalued_holdings | length }} holding{{ '' if unvalued_holdings | length == 1 else 's' }} excluded from your total
+            </p>
+            <p class="text-xs text-on-surface/70 leading-relaxed">
+              {% for h in unvalued_holdings %}<span class="font-mono font-bold text-on-surface">{{ h.symbol }}</span> ({{ h.account }}, {{ '{:,g}'.format(h.shares) }} units){% if not loop.last %}, {% endif %}{% endfor %}
+              — no entry price and no total value on record, so there is no basis to value
+              {{ 'it' if unvalued_holdings | length == 1 else 'them' }}. The
+              <span class="font-semibold text-on-surface">{{ total_value_cad }}</span> above is the total of everything else.
+            </p>
+            <p class="text-[11px] text-on-surface-variant/50 leading-relaxed">
+              Fix it by entering either the total from your statement in the Total Value column,
+              or a per-unit entry price in Entry Price — either one is enough.
+            </p>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="bg-[#131b2e]/40 rounded-2xl overflow-hidden border border-outline-variant/10 shadow-2xl">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse table-fixed min-w-[1600px]">
+              <thead>
+                <tr class="bg-surface-container-high/40 text-[9px] uppercase tracking-[0.2em] text-primary/80 font-black border-b border-outline-variant/10">
+                  <th class="px-4 py-3 w-16 text-center">ID</th>
+                  <th class="px-4 py-3 w-40">Symbol</th>
+                  <th class="px-4 py-3 w-64">Instrument Name</th>
+                  <th class="px-4 py-3 w-36">Asset Type</th>
+                  <th class="px-4 py-3 w-32 text-right">
+                    <button type="button" class="sort-header" data-sort-key="shares" onclick="sortBy('shares')" title="Sort by units">
+                      Units<span class="sort-arrow material-symbols-outlined" data-icon="unfold_more">unfold_more</span>
+                    </button>
+                  </th>
+                  <th class="px-4 py-3 w-36 text-right">
+                    <button type="button" class="sort-header" data-sort-key="purchase_price" onclick="sortBy('purchase_price')" title="Sort by entry price">
+                      Entry Price<span class="sort-arrow material-symbols-outlined" data-icon="unfold_more">unfold_more</span>
+                    </button>
+                  </th>
+                  <th class="px-4 py-3 w-40 text-right" title="Last captured price, as of {{ last_sync_display }}. Snapshot value — not a live tick. The arrow is the day's move against the previous close, shown only where a live quote backed it.">Last Price</th>
+                  <th class="px-4 py-3 w-36 text-right">
+                    <button type="button" class="sort-header" data-sort-key="value_native" onclick="sortBy('value_native')" title="Units × last price, in the holding's own currency. Not converted, so rows in different currencies are not comparable and do not sum to the header total.">
+                      Total Value<span class="sort-arrow material-symbols-outlined" data-icon="unfold_more">unfold_more</span>
+                    </button>
+                  </th>
+                  <th class="px-4 py-3 w-48">Custody Node</th>
+                  <th class="px-4 py-3 w-28">CCY</th>
+                  <th class="px-4 py-3 w-32 text-right">
+                    <button type="button" class="sort-header" data-sort-key="return_pct" onclick="sortBy('return_pct')" title="Sort by return. Computed from entry price vs last price; editable only for cash, pension and private assets, where return is tracked manually.">
+                      Return %<span class="sort-arrow material-symbols-outlined" data-icon="unfold_more">unfold_more</span>
+                    </button>
+                  </th>
+                  <th class="px-4 py-3 w-24 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody id="portfolio-tbody" class="text-xs font-body divide-y divide-outline-variant/5">
+                {% for holding in holdings %}
+                {# Cash, pension and private assets carry no market quote, and their return is
+                   user-supplied rather than computed. Rows with no entry price fall in the same
+                   bucket: portfolio_csv reverse-engineers cost basis from the typed return. #}
+                {% set is_market_priced = not (holding.is_cash_or_pension or holding.is_private_asset) %}
+                {% set has_manual_return = holding.is_cash_or_pension or holding.is_private_asset or (holding.purchase_price_raw | default(0)) == 0 %}
+                <tr class="portfolio-row group hover:bg-primary/5 transition-all duration-150" data-search="{{ holding.symbol }} {{ holding.name }} {{ holding.account }}">
+                  <td class="px-4 py-3 text-center">
+                    <span class="text-[10px] font-mono text-on-surface-variant/30 row-index">{{ loop.index }}</span>
+                  </td>
+                  <td class="px-4 py-3">
+                    <div class="flex items-center gap-3">
+                      {% if holding.source == 'API' %}
+                        <!-- Read-only for automated API holdings -->
+                        <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center font-black text-[10px] text-primary border border-primary/20">
+                          {{ holding.symbol[:2] }}
+                        </div>
+                        <span class="font-headline font-black text-on-surface tracking-tight">{{ holding.symbol }}</span>
+                        <input type="hidden" name="symbol" value="{{ holding.symbol }}"/>
+                      {% else %}
+                        <input class="w-full bg-surface-container-lowest/50 border border-outline-variant/15 rounded-lg text-xs px-2.5 py-1.5 focus:ring-1 focus:ring-primary focus:bg-background transition-all font-headline font-black text-on-surface uppercase tracking-tight" 
+                          type="text" name="symbol" value="{{ holding.symbol }}"/>
+                      {% endif %}
+                    </div>
+                  </td>
+                  <td class="px-4 py-3">
+                    <span class="text-xs font-medium text-on-surface/80 truncate block instrument-name px-2.5 py-1.5" title="{{ holding.name }}">
+                      {{ holding.name or 'Dynamic Fetch' }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3">
+                    {% if holding.source == 'API' %}
+                      <!-- Read-only for automated API holdings -->
+                      <span class="text-[9px] font-black uppercase tracking-widest text-primary/60 px-2.5 py-1.5">Public (Sync)</span>
+                      <input type="hidden" name="asset_type" value="Public"/>
+                    {% else %}
+                      <div class="relative">
+                        <select name="asset_type" class="appearance-none w-full bg-surface-container-lowest/50 border border-outline-variant/15 rounded-lg text-xs px-2.5 py-1.5 pr-7 focus:ring-1 focus:ring-primary focus:bg-background transition-all font-bold text-on-surface-variant cursor-pointer">
+                          <option value="Public" {% if not holding.is_private_asset %}selected{% endif %}>Public</option>
+                          <option value="Private" {% if holding.is_private_asset %}selected{% endif %}>Private</option>
+                        </select>
+                        <span class="material-symbols-outlined text-sm text-on-surface/40 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
+                      </div>
+                    {% endif %}
+                  </td>
+                  <td class="px-4 py-3">
+                    {% if holding.source == 'API' %}
+                      <span class="text-xs font-mono text-on-surface/60 block text-right px-2.5 py-1.5">{{ holding.shares }}</span>
+                      <input type="hidden" name="shares" value="{{ holding.shares }}"/>
+                    {% else %}
+                      <input class="w-full bg-surface-container-lowest/50 border border-outline-variant/15 rounded-lg text-xs px-2.5 py-1.5 focus:ring-1 focus:ring-primary focus:bg-background transition-all font-mono text-right" 
+                        type="number" step="any" name="shares" value="{{ holding.shares }}"/>
+                    {% endif %}
+                  </td>
+                  <td class="px-4 py-3">
+                    {% if holding.source == 'API' %}
+                      <span class="text-xs font-mono text-on-surface/60 block text-right px-2.5 py-1.5">{{ holding.purchase_price }}</span>
+                      <input type="hidden" name="purchase_price" value="{{ holding.purchase_price_raw }}"/>
+                    {# `is defined` first, and it is not belt-and-braces: a summary cached by
+                       a build without this field yields Undefined, and Jinja's
+                       `Undefined is not none` is TRUE — so the bare none-check walks into
+                       the formatter below and 500s the whole page until the cache expires. #}
+                    {% elif holding.stated_total is defined and holding.stated_total is not none and holding.return_pct is not none %}
+                      {# Derived from the stated total and return, not held by the user. Shown
+                         read-only because anything typed here is recomputed on the next load —
+                         an input that silently discards what you put in it is worse than none. #}
+                      <span class="text-xs font-mono text-on-surface/40 block text-right px-2.5 py-1.5 italic"
+                        title="Derived: {{ holding.currency }} {{ '%0.2f'|format(holding.stated_total) }} ÷ {{ holding.shares }} units ÷ (1 + {{ holding.return_pct }}%). Change the total or the return to move it.">{{ holding.purchase_price }}</span>
+                      <input type="hidden" name="purchase_price" value="{{ holding.purchase_price_raw }}"/>
+                    {% else %}
+                      <input class="w-full bg-surface-container-lowest/50 border border-outline-variant/15 rounded-lg text-xs px-2.5 py-1.5 focus:ring-1 focus:ring-primary focus:bg-background transition-all font-mono text-right"
+                        type="number" step="any" name="purchase_price" value="{{ holding.purchase_price_raw }}"/>
+                    {% endif %}
+                  </td>
+                  <td class="px-4 py-3">
+                    {% if is_market_priced %}
+                      {# day_change_pct is None unless a live quote backed this row, so an
+                         absent arrow means "direction unknown", never "unchanged". #}
+                      {% set day = holding.day_change_pct %}
+                      <div class="flex items-center justify-end gap-1.5 px-2.5 py-1.5" title="Snapshot price as of {{ last_sync_display }}{% if is_stale %} — stale, live sync failed{% endif %}">
+                        <span class="text-xs font-mono text-on-surface/80">{{ holding.current_price }}</span>
+                        {% if day is not none %}
+                          <span class="day-move inline-flex items-center text-[10px] font-mono font-bold {% if day > 0 %}text-primary{% elif day < 0 %}text-error{% else %}text-on-surface/40{% endif %}"
+                            data-day-move="{{ day }}"
+                            title="{{ '%+.2f'|format(day) }}% against the previous close, as of {{ last_sync_display }}">
+                            <span class="material-symbols-outlined text-[12px]" data-icon="{% if day > 0 %}arrow_drop_up{% elif day < 0 %}arrow_drop_down{% else %}remove{% endif %}">{% if day > 0 %}arrow_drop_up{% elif day < 0 %}arrow_drop_down{% else %}remove{% endif %}</span>{{ '%+.2f'|format(day) }}%
+                          </span>
+                        {% else %}
+                          <span class="text-[10px] font-mono text-on-surface/20" title="No live quote backed this price, so the day's direction is unknown">—</span>
+                        {% endif %}
+                      </div>
+                    {% else %}
+                      {# Manual entries (cash, pension, private) carry no market quote, so their
+                         mark moves only when the holder adds shares — never intraday. Show that
+                         stable mark with a performance arrow off total return vs cost, NOT a day
+                         move, and label it so the two are never conflated. #}
+                      {% set perf = holding.gain_loss_pct | default(0) %}
+                      {% if (holding.current_price_raw | default(0)) > 0 %}
+                        <div class="flex items-center justify-end gap-1.5 px-2.5 py-1.5" title="Manual mark — not market-quoted. Moves only when you buy or add shares, not intraday.">
+                          <span class="text-xs font-mono text-on-surface/80">{{ holding.current_price }}</span>
+                          <span class="perf-move inline-flex items-center text-[10px] font-mono font-bold {% if perf > 0 %}text-primary{% elif perf < 0 %}text-error{% else %}text-on-surface/40{% endif %}"
+                            title="{{ '%+.1f'|format(perf) }}% total return vs cost — the tracked performance of this manual holding, not a day move">
+                            <span class="material-symbols-outlined text-[12px]" data-icon="{% if perf > 0 %}arrow_drop_up{% elif perf < 0 %}arrow_drop_down{% else %}remove{% endif %}">{% if perf > 0 %}arrow_drop_up{% elif perf < 0 %}arrow_drop_down{% else %}remove{% endif %}</span>{{ '%+.1f'|format(perf) }}%
+                          </span>
+                        </div>
+                      {% else %}
+                        <span class="text-xs font-mono text-on-surface/25 block text-right px-2.5 py-1.5" title="No mark on record for this manual holding">—</span>
+                      {% endif %}
+                    {% endif %}
+                  </td>
+                  <td class="px-4 py-3">
+                    {# Colour Total Value by the position's return so "up or down" reads at a glance
+                       on every row, market-priced or manual. The second argument to default()
+                       matters: an unvalued row carries gain_loss_pct = None, and plain
+                       default(0) only substitutes for UNDEFINED, so `vperf > 0` would raise
+                       on None and take the whole page down with it. #}
+                    {% set vperf = holding.gain_loss_pct | default(0, true) %}
+                    {% if holding.is_unvalued %}
+                      {# Units on record, nothing to value them with. The input is still here
+                         — this cell is exactly where the holder fixes it — but it shows no
+                         number and no placeholder, because every number we could put here
+                         would be one we made up. #}
+                      <input class="value-cell w-full bg-error/5 border border-error/40 rounded-lg text-xs px-2.5 py-1.5 focus:ring-1 focus:ring-error focus:bg-background transition-all font-mono text-right text-error placeholder:text-error/50"
+                        type="number" step="any" name="market_value"
+                        data-value="" value="" placeholder="Needs a total"
+                        title="This holding has no entry price and no total value, so it cannot be valued and is excluded from your portfolio total. Enter the total from your statement here (in {{ holding.currency }}), or an entry price in the Entry Price column."/>
+                    {% elif holding.source != 'API' and has_manual_return %}
+                      {# A holding with no quotable price is valued by its statement, not by
+                         this app. Units × an assumed $1.00 unit is a guess; the total the
+                         holder is reading off the statement is the fact. Typing it here makes
+                         it authoritative and the entry price is derived back out of it. #}
+                      <input class="value-cell w-full bg-surface-container-lowest/50 border border-outline-variant/15 rounded-lg text-xs px-2.5 py-1.5 focus:ring-1 focus:ring-primary focus:bg-background transition-all font-mono text-right {% if vperf > 0 %}text-primary{% elif vperf < 0 %}text-error{% endif %}"
+                        type="number" step="any" name="market_value"
+                        data-value="{{ holding.value_native | default(0) }}"
+                        value="{{ holding.stated_total if (holding.stated_total is defined and holding.stated_total is not none) else '' }}"
+                        placeholder="{{ '%0.2f'|format(holding.value_native | default(0, true)) }}"
+                        title="The total from your statement, in {{ holding.currency }}. Enter it with the return % and the entry price is worked out for you — a pension states units, a return and a total, and never a unit cost. Leave it empty to value this row as units × price instead."/>
+                    {% else %}
+                      <span class="value-cell text-xs font-mono block text-right px-2.5 py-1.5 {% if vperf > 0 %}text-primary{% elif vperf < 0 %}text-error{% else %}text-on-surface/80{% endif %}"
+                        data-value="{{ holding.value_native | default(0, true) }}"
+                        title="{{ holding.shares }} × {{ holding.current_price }} = {{ holding.currency }} {{ '%0.2f'|format(holding.value_native | default(0, true)) }}, in the holding's own currency ({{ '%+.1f'|format(vperf) }}% vs cost)">${{ '{:,.2f}'.format(holding.value_native | default(0, true)) }}</span>
+                    {% endif %}
+                  </td>
+                  <td class="px-4 py-3">
+                    {% if holding.source == 'API' %}
+                      <div class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface-container-highest/50 rounded-full border border-outline-variant/10 w-fit">
+                        <span class="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_5px_rgba(78,222,163,0.5)]"></span>
+                        <span class="text-[9px] font-black uppercase tracking-widest text-on-surface-variant">{{ holding.account }}</span>
+                      </div>
+                      <input type="hidden" name="account" value="{{ holding.account }}"/>
+                    {% else %}
+                      <input class="w-full bg-surface-container-lowest/50 border border-outline-variant/15 rounded-lg text-xs px-2.5 py-1.5 focus:ring-1 focus:ring-primary focus:bg-background transition-all" 
+                        type="text" name="account" value="{{ holding.account }}"/>
+                    {% endif %}
+                  </td>
+                  <td class="px-4 py-3">
+                    {% if holding.source == 'API' %}
+                      <span class="text-xs font-bold text-on-surface/60 block px-2.5 py-1.5">{{ holding.currency }}</span>
+                      <input type="hidden" name="currency" value="{{ holding.currency }}"/>
+                    {% else %}
+                      {# Every currency the app supports, not just the two most common.
+                         A select that omits the row's actual currency renders with the
+                         FIRST option selected, and savePortfolio reads what is selected
+                         — so a EUR holding was silently rewritten to USD by any save,
+                         including one that never touched this row. #}
+                      <div class="relative">
+                        <select name="currency" class="appearance-none w-full bg-surface-container-lowest/50 border border-outline-variant/15 rounded-lg text-xs px-2.5 py-1.5 pr-7 focus:ring-1 focus:ring-primary focus:bg-background transition-all font-bold text-on-surface-variant cursor-pointer">
+                          {% for code in ['USD', 'CAD', 'EUR', 'GBP', 'AUD', 'JPY'] %}
+                          <option value="{{ code }}" {% if holding.currency == code %}selected{% endif %}>{{ code }}</option>
+                          {% endfor %}
+                        </select>
+                        <span class="material-symbols-outlined text-sm text-on-surface/40 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
+                      </div>
+                    {% endif %}
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    {% if holding.source != 'API' and has_manual_return %}
+                      <input class="w-full bg-surface-container-lowest/50 border border-outline-variant/15 rounded-lg text-xs px-2.5 py-1.5 focus:ring-1 focus:ring-primary focus:bg-background transition-all font-mono text-right"
+                        type="number" step="any" name="return_pct" value="{{ holding.return_pct if holding.return_pct is not none else '' }}" placeholder="—"/>
+                    {% else %}
+                      {% set gain = holding.gain_loss_pct | default(0, true) %}
+                      <span class="return-cell text-xs font-mono font-bold block text-right px-2.5 py-1.5 {% if gain > 0 %}text-primary{% elif gain < 0 %}text-error{% else %}text-on-surface/40{% endif %}"
+                        title="Computed from entry price vs last price, as of {{ last_sync_display }}">{{ holding.gain_loss }}</span>
+                      {# This row shows a computed return, so echo the stored manual value back
+                         verbatim. Writing the computed number into return_pct would corrupt the
+                         CSV field and skew the next cost-basis reverse-engineering pass. #}
+                      <input type="hidden" name="return_pct" value="{{ holding.return_pct if holding.return_pct is not none else '' }}"/>
+                    {% endif %}
+                  </td>
+                  <td class="px-4 py-3 text-center">
+                    {% if holding.source == 'API' %}
+                      <span class="material-symbols-outlined text-lg text-primary/40" title="Automated account holdings cannot be manually deleted here" data-icon="cloud_done">cloud_done</span>
+                    {% else %}
+                      <button type="button" onclick="deleteRow(this)" class="p-2 rounded-lg hover:bg-error/10 hover:text-error text-on-surface-variant/40 transition-all opacity-0 group-hover:opacity-100">
+                        <span class="material-symbols-outlined text-lg" data-icon="delete_outline">delete_outline</span>
+                      </button>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Grid Footer -->
+          <div class="px-8 py-5 bg-[#171f33]/40 border-t border-outline-variant/10 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+              <button onclick="allocateNewPosition()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/5 border border-primary/20 text-[10px] font-black uppercase tracking-[0.2em] text-primary hover:bg-primary/10 transition-all cursor-pointer">
+                <span class="material-symbols-outlined text-sm" data-icon="add_circle">add_circle</span>
+                Allocate New Position
+              </button>
+              <button onclick="openPasteModal()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container-highest/50 border border-outline-variant/10 text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-all cursor-pointer" title="Paste the text of a statement from an account this app cannot sync. It is read into draft rows for you to check.">
+                <span class="material-symbols-outlined text-sm" data-icon="content_paste">content_paste</span>
+                Paste Statement
+              </button>
+              <input type="file" id="csv-upload-input" accept=".csv" class="hidden" onchange="uploadCSV(event)">
+              <button onclick="document.getElementById('csv-upload-input').click()" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container-highest/50 border border-outline-variant/10 text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-all cursor-pointer">
+                <span class="material-symbols-outlined text-sm" data-icon="upload">upload</span>
+                Upload CSV
+              </button>
+              <a href="/api/portfolio/download-template" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container-highest/50 border border-outline-variant/10 text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-all">
+                <span class="material-symbols-outlined text-sm" data-icon="download">download</span>
+                Download CSV Template
+              </a>
+            </div>
+            <div class="flex items-center gap-6">
+              <p id="clusters-count" class="text-[10px] text-on-surface-variant/40 font-mono italic">Holding Analysis: {{ holdings|length }} Active Clusters</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Position Reconciliation (4.10a) — read surface for
+             GET /api/portfolio/reconciliation.
+
+             THREE STATES, and they are not interchangeable. `no_data` and
+             `accruing` are claims about the RECORDER; "no changes" is a claim
+             about the PORTFOLIO. Collapsing the first two into the third is the
+             exact failure this store was built to avoid, so the renderer below
+             branches on `status` before it ever looks at `changes`.
+
+             Every row carries cause: "unclassified". A delta is equally a
+             trade, a deposit, a transfer in kind, a reinvested dividend, a fee,
+             an FX conversion, a split or a corporate action — so no label in
+             this panel may name one. -->
+        <div class="mt-6 bg-[#131b2e]/40 rounded-2xl overflow-hidden border border-outline-variant/10 shadow-2xl">
+          <div class="px-8 py-5 border-b border-outline-variant/10 flex items-start justify-between gap-6">
+            <div>
+              <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-primary/80 flex items-center gap-2">
+                <span class="material-symbols-outlined text-sm" data-icon="difference">difference</span>
+                Position Reconciliation
+              </h2>
+              <p class="text-[10px] text-on-surface-variant/40 mt-1.5 max-w-3xl leading-relaxed normal-case tracking-normal">
+                What moved between the last two daily snapshots. Causes are never inferred &mdash; nothing here is a trade until you say it is.
+              </p>
+            </div>
+            <div id="recon-coverage" class="text-right shrink-0 font-mono text-[10px] text-on-surface-variant/40">&nbsp;</div>
+          </div>
+          <div id="recon-body" class="px-8 py-6">
+            <p class="text-[10px] font-mono text-on-surface-variant/40 italic">Loading reconciliation&hellip;</p>
+          </div>
+        </div>
+
+        <!-- Paste Statement — manual entry for the accounts that cannot sync.
+
+             The model DRAFTS; it never writes. Rows extracted here land in the
+             table above as unsaved inputs, and the same Save Changes button that
+             commits a hand-typed row commits these. Nothing on this path reaches
+             my_portfolio.csv without the user pressing it.
+
+             Every draft carries the span of the pasted text it was read from,
+             and the server has already checked that span against the input —
+             a row that quoted a line the user never pasted is discarded before
+             it gets here. The quote is shown anyway, because the check proves
+             the text exists, not that the reading of it was right. -->
+        <div id="paste-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-[#0b1120]/80 backdrop-blur-sm p-6">
+          <div class="w-full max-w-5xl max-h-[88vh] flex flex-col bg-[#131b2e] rounded-2xl border border-outline-variant/15 shadow-2xl overflow-hidden">
+            <div class="px-8 py-5 border-b border-outline-variant/10 flex items-start justify-between gap-6 shrink-0">
+              <div>
+                <h2 class="text-[11px] font-black uppercase tracking-[0.2em] text-primary/80 flex items-center gap-2">
+                  <span class="material-symbols-outlined text-sm" data-icon="content_paste">content_paste</span>
+                  Paste Statement
+                </h2>
+                <p class="text-[10px] text-on-surface-variant/40 mt-1.5 max-w-2xl leading-relaxed normal-case tracking-normal">
+                  For accounts this app cannot sync. Paste the holdings text from a statement, an email or a portal &mdash; it is read into draft rows you check before anything is saved.
+                </p>
+              </div>
+              <button onclick="closePasteModal()" class="p-1.5 rounded-lg text-on-surface-variant/40 hover:text-on-surface hover:bg-surface-container-highest/50 transition-all shrink-0" title="Close">
+                <span class="material-symbols-outlined text-lg" data-icon="close">close</span>
+              </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto custom-scrollbar px-8 py-6">
+              <!-- Stage 1: the paste -->
+              <div id="paste-stage-input">
+                <textarea id="paste-text" rows="12" spellcheck="false"
+                  class="w-full bg-surface-container-lowest/50 border border-outline-variant/15 rounded-xl text-[11px] font-mono leading-relaxed text-on-surface px-4 py-3 focus:ring-1 focus:ring-primary focus:border-primary/40 outline-none transition-all placeholder-on-surface-variant/25"
+                  placeholder="Paste your holdings here, in whatever shape they came in. For example:&#10;&#10;  Symbol   Description          Qty      Avg Cost    Market Value&#10;  AAPL     Apple Inc            30       170.25      5,850.00&#10;  TD.TO    Toronto-Dominion     100      85.40       9,120.00&#10;  CASH     Cash Balance         4,200.00 1.00        4,200.00"></textarea>
+
+                <div class="flex flex-wrap items-end gap-6 mt-5">
+                  <div>
+                    <label for="paste-default-account" class="block text-[9px] font-black uppercase tracking-[0.2em] text-on-surface-variant/50 mb-1.5">Account name</label>
+                    <input id="paste-default-account" type="text" placeholder="e.g. Workplace Pension"
+                      class="w-56 bg-surface-container-lowest/50 border border-outline-variant/15 rounded-lg text-xs px-2.5 py-1.5 focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"/>
+                    <p class="text-[9px] text-on-surface-variant/30 mt-1 max-w-56 leading-relaxed">Used only where the text names no account of its own &mdash; which is most of the time. A combined view merges every account into one table and says nothing about which position sits where, so nothing will guess it for you.</p>
+                  </div>
+                  <div>
+                    <label for="paste-default-currency" class="block text-[9px] font-black uppercase tracking-[0.2em] text-on-surface-variant/50 mb-1.5">Currency</label>
+                    <div class="relative">
+                      <select id="paste-default-currency"
+                        class="appearance-none w-36 bg-surface-container-lowest/50 border border-outline-variant/15 rounded-lg text-xs px-2.5 py-1.5 pr-7 focus:ring-1 focus:ring-primary outline-none transition-all font-bold text-on-surface-variant cursor-pointer">
+                        <option value="">Not stated</option>
+                        <option value="USD">USD</option>
+                        <option value="CAD">CAD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
+                        <option value="AUD">AUD</option>
+                        <option value="JPY">JPY</option>
+                      </select>
+                      <span class="material-symbols-outlined text-sm text-on-surface/40 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
+                    </div>
+                    <p class="text-[9px] text-on-surface-variant/30 mt-1 max-w-36 leading-relaxed">Fallback only. A stated currency always wins.</p>
+                  </div>
+                </div>
+
+                <div id="paste-error" class="mt-5"></div>
+              </div>
+
+              <!-- Stage 2: the review -->
+              <div id="paste-stage-review" class="hidden"></div>
+            </div>
+
+            <div class="px-8 py-5 bg-[#171f33]/40 border-t border-outline-variant/10 flex items-center justify-between gap-4 shrink-0">
+              <p id="paste-footnote" class="text-[10px] text-on-surface-variant/40 leading-relaxed max-w-xl">
+                Read by a language model. Nothing is saved until you review the drafts and press Save Changes.
+              </p>
+              <div class="flex items-center gap-3 shrink-0">
+                <button id="paste-back-btn" onclick="pasteBackToInput()" class="hidden px-4 py-2 rounded-xl bg-surface-container-highest/50 border border-outline-variant/10 text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant hover:text-primary transition-all cursor-pointer">
+                  Back
+                </button>
+                <button id="paste-extract-btn" onclick="extractStatement()" class="flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-[10px] font-black uppercase tracking-[0.2em] text-[#131b2e] hover:bg-primary/90 transition-all cursor-pointer">
+                  <span class="material-symbols-outlined text-sm font-black" data-icon="auto_awesome">auto_awesome</span>
+                  Extract Holdings
+                </button>
+                <button id="paste-apply-btn" onclick="applyExtractedRows()" class="hidden items-center gap-2 px-5 py-2 rounded-xl bg-primary text-[10px] font-black uppercase tracking-[0.2em] text-[#131b2e] hover:bg-primary/90 transition-all cursor-pointer">
+                  <span class="material-symbols-outlined text-sm font-black" data-icon="playlist_add">playlist_add</span>
+                  <span id="paste-apply-label">Add to editor</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fund Flows (5.5) and Event Radar (3.5b) moved to /monitor.
+             Both are read-only and answer a daily question; this page is an
+             editor visited monthly, and it was paying for their fetches on
+             every load. Reconciliation stayed because its cause cell POSTs. -->
+      </section>
+    </div>
+
+    <!-- Status Bar -->
+    <footer class="h-8 px-8 bg-surface-container-lowest border-t border-outline-variant/10 flex items-center justify-between text-[9px] uppercase tracking-[0.2em] font-semibold text-on-surface-variant/40">
+      <div class="flex items-center space-x-4">
+        <span>SYSTEM STATUS: OPERATIONAL</span>
+        {% if is_stale %}
+          <span class="flex items-center text-error" title="Live sync failed — prices below come from the last known good snapshot">
+            <span class="w-1 h-1 rounded-full bg-error mr-1.5"></span> STALE SNAPSHOT
+          </span>
+        {% else %}
+          <span class="flex items-center"><span class="w-1 h-1 rounded-full bg-primary mr-1.5"></span> SYNCED</span>
+        {% endif %}
+      </div>
+      <div title="Prices are read from a cached portfolio snapshot, not a live tick stream.">
+        PRICES AS OF: {{ last_sync_display }}
+      </div>
+    </footer>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/engine_panel.js?v={{ app_version }}"></script>
+<script>
+  // Portfolio Filtering Logic
+  document.addEventListener('DOMContentLoaded', () => {
+    const filterBtn = document.getElementById('toggle-filter');
+    const filterContainer = document.getElementById('filter-container');
+    const filterInput = document.getElementById('portfolio-filter');
+
+    if (filterBtn) {
+      filterBtn.addEventListener('click', () => {
+        const isHidden = filterContainer.classList.contains('w-0');
+        if (isHidden) {
+          filterContainer.classList.remove('w-0', 'opacity-0');
+          filterContainer.classList.add('w-56', 'opacity-100', 'px-3');
+          filterInput.focus();
+        } else {
+          filterContainer.classList.add('w-0', 'opacity-0');
+          filterContainer.classList.remove('w-56', 'opacity-100', 'px-3');
+          filterInput.value = '';
+          triggerFilter('');
+        }
+      });
+    }
+
+    if (filterInput) {
+      filterInput.addEventListener('input', (e) => {
+        triggerFilter(e.target.value);
+      });
+    }
+
+    document.addEventListener('keydown', (e) => {
+      const modal = document.getElementById('paste-modal');
+      if (e.key === 'Escape' && modal && !modal.classList.contains('hidden')) {
+        closePasteModal();
+      }
+    });
+  });
+
+  function triggerFilter(term) {
+    const searchStr = term.toLowerCase().trim();
+    const rows = document.querySelectorAll('.portfolio-row');
+    rows.forEach(row => {
+      const symInput = row.querySelector('input[name="symbol"]');
+      const symbolVal = symInput ? symInput.value : (row.querySelector('.font-black')?.textContent || '');
+      const nameVal = row.querySelector('.instrument-name')?.textContent || '';
+      const accInput = row.querySelector('input[name="account"]');
+      const accountVal = accInput ? accInput.value : (row.querySelector('.text-on-surface-variant')?.textContent || '');
+      
+      const content = `${symbolVal} ${nameVal} ${accountVal}`.toLowerCase();
+      if (content.includes(searchStr)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+
+  // Toast Helper
+  function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast-notification');
+    const msgSpan = document.getElementById('toast-message');
+    const iconSpan = document.getElementById('toast-icon');
+
+    msgSpan.textContent = message;
+    
+    // Theme configurations
+    if (type === 'success') {
+      iconSpan.textContent = 'check_circle';
+      iconSpan.className = 'material-symbols-outlined text-lg text-primary';
+    } else if (type === 'error') {
+      iconSpan.textContent = 'warning';
+      iconSpan.className = 'material-symbols-outlined text-lg text-error';
+    } else {
+      iconSpan.textContent = 'info';
+      iconSpan.className = 'material-symbols-outlined text-lg text-[#dae2fd]';
+    }
+
+    toast.classList.remove('opacity-0', 'translate-y-2', 'pointer-events-none');
+    toast.classList.add('opacity-100', 'translate-y-0');
+
+    if (type !== 'info') {
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-2', 'pointer-events-none');
+      }, 3000);
+    }
+  }
+
+  function hideToast() {
+    const toast = document.getElementById('toast-notification');
+    toast.classList.remove('opacity-100', 'translate-y-0');
+    toast.classList.add('opacity-0', 'translate-y-2', 'pointer-events-none');
+  }
+
+  // The currencies the server will accept back. Kept in step with
+  // tools/memory.py SUPPORTED_BASE_CURRENCIES — a code this list offers that the
+  // parser rejects would silently blank the field on the round trip.
+  const CURRENCY_CODES = ['USD', 'CAD', 'EUR', 'GBP', 'AUD', 'JPY'];
+
+  const INPUT_CLS = 'w-full bg-surface-container-lowest/50 border border-outline-variant/15 rounded-lg text-xs px-2.5 py-1.5 focus:ring-1 focus:ring-primary focus:bg-background transition-all';
+  // A field the row could not be given a value for. Amber rather than red: the
+  // row is fine, the number is simply not known yet, and it has to be visible
+  // once the modal is gone and this is just another line in the table.
+  const NEEDS_ENTRY_CLS = 'border-[#e0b252]/50 bg-[#e0b252]/5';
+
+  // One row builder for both entry points. `allocateNewPosition` used to carry
+  // this markup inline; a pasted draft has to produce a row that is identical in
+  // every respect to a hand-added one, because savePortfolio reads the table and
+  // nothing downstream should be able to tell them apart.
+  function buildPortfolioRow(v) {
+    v = v || {};
+    const symbol = v.symbol || '';
+    // Blank, not zero. A pasted position whose quantity could not be verified
+    // must show as unanswered — a 0 in the box reads as a stated number, and it
+    // is the one value that would save without complaint and be wrong.
+    const shares = (v.shares === null || v.shares === undefined || v.shares === '') ? '' : v.shares;
+    const price = (v.purchase_price === null || v.purchase_price === undefined || v.purchase_price === '') ? '' : v.purchase_price;
+    const account = v.account || '';
+    const currency = CURRENCY_CODES.includes(v.currency) ? v.currency : 'USD';
+    const assetType = v.asset_type === 'Private' ? 'Private' : 'Public';
+    const name = v.name || '';
+
+    // Only a drafted row flags its gaps. A row the user just clicked "Allocate"
+    // on is empty because they have not typed yet, which is not a finding.
+    const flag = (isBlank) => (v.flagBlanks && isBlank) ? ` ${NEEDS_ENTRY_CLS}` : '';
+    const sharesFlag = flag(shares === '');
+    const priceFlag = flag(price === '');
+    const accountFlag = flag(account === '');
+
+    const tr = document.createElement('tr');
+    tr.className = 'portfolio-row group hover:bg-primary/5 transition-all duration-150';
+    tr.setAttribute('data-search', `${symbol} ${name} ${account}`);
+    tr.innerHTML = `
+      <td class="px-4 py-3 text-center">
+        <span class="text-[10px] font-mono text-on-surface-variant/30 row-index"></span>
+      </td>
+      <td class="px-4 py-3">
+        <input class="${INPUT_CLS} font-headline font-black text-on-surface uppercase tracking-tight"
+          type="text" name="symbol" value="${esc(symbol)}" placeholder="e.g. AAPL"/>
+      </td>
+      <td class="px-4 py-3">
+        <span class="text-xs font-medium text-on-surface/40 truncate block instrument-name px-2.5 py-1.5" title="${esc(name)}">${name ? esc(name) : 'Dynamic Fetch'}</span>
+      </td>
+      <td class="px-4 py-3">
+        <div class="relative">
+          <select name="asset_type" class="appearance-none ${INPUT_CLS} pr-7 font-bold text-on-surface-variant cursor-pointer">
+            <option value="Public"${assetType === 'Public' ? ' selected' : ''}>Public</option>
+            <option value="Private"${assetType === 'Private' ? ' selected' : ''}>Private</option>
+          </select>
+          <span class="material-symbols-outlined text-sm text-on-surface/40 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
+        </div>
+      </td>
+      <td class="px-4 py-3">
+        <input class="${INPUT_CLS}${sharesFlag} font-mono text-right"
+          type="number" step="any" name="shares" value="${esc(shares)}" placeholder="${sharesFlag ? '—' : '0'}"
+          title="${shares === '' ? 'No quantity was read from the statement — enter it.' : ''}"/>
+      </td>
+      <td class="px-4 py-3">
+        <input class="${INPUT_CLS}${priceFlag} font-mono text-right"
+          type="number" step="any" name="purchase_price" value="${esc(price)}" placeholder="${priceFlag ? '—' : '0'}"
+          title="${price === '' ? 'No cost basis was read from the statement. Leave empty to track this row by return % instead.' : ''}"/>
+      </td>
+      <td class="px-4 py-3">
+        <span class="text-xs font-mono text-on-surface/25 block text-right px-2.5 py-1.5" title="Price is captured on the next portfolio sync, after this row is saved">—</span>
+      </td>
+      <td class="px-4 py-3">
+        <input class="value-cell ${INPUT_CLS} font-mono text-right"
+          type="number" step="any" name="market_value" value="" placeholder="—"
+          title="Optional. For a holding with no market price — a pension, a private fund — enter the total from your statement here and leave the entry price empty; the cost basis is worked out from this and the return %. Leave it blank for anything the market quotes."/>
+      </td>
+      <td class="px-4 py-3">
+        <input class="${INPUT_CLS}${accountFlag}" type="text" name="account" value="${esc(account)}" placeholder="Account"/>
+      </td>
+      <td class="px-4 py-3">
+        <div class="relative">
+          <select name="currency" class="appearance-none ${INPUT_CLS} pr-7 font-bold text-on-surface-variant cursor-pointer">
+            ${CURRENCY_CODES.map(c => `<option value="${c}"${c === currency ? ' selected' : ''}>${c}</option>`).join('')}
+          </select>
+          <span class="material-symbols-outlined text-sm text-on-surface/40 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
+        </div>
+      </td>
+      <td class="px-4 py-3">
+        <input class="${INPUT_CLS} font-mono text-right"
+          type="number" step="any" name="return_pct" value="" placeholder="—"/>
+      </td>
+      <td class="px-4 py-3 text-center">
+        <button type="button" onclick="deleteRow(this)" class="p-2 rounded-lg hover:bg-error/10 hover:text-error text-on-surface-variant/40 transition-all">
+          <span class="material-symbols-outlined text-lg" data-icon="delete_outline">delete_outline</span>
+        </button>
+      </td>
+    `;
+    return tr;
+  }
+
+  // Allocate New Position
+  function allocateNewPosition() {
+    const tbody = document.getElementById('portfolio-tbody');
+    // A hand-added row starts at zero rather than blank: the user is about to
+    // type the number, so there is nothing unanswered to flag.
+    tbody.appendChild(buildPortfolioRow({ shares: 0, purchase_price: 0 }));
+    reindexRows();
+    updateFooterStats();
+  }
+
+  // Delete Row
+  function deleteRow(btn) {
+    const row = btn.closest('.portfolio-row');
+    row.remove();
+    reindexRows();
+    updateFooterStats();
+  }
+
+  // The ID column is a display position, not an identity — restate it whenever
+  // rows are removed or reordered.
+  function reindexRows() {
+    document.querySelectorAll('#portfolio-tbody .portfolio-row').forEach((r, idx) => {
+      const indexSpan = r.querySelector('.row-index');
+      if (indexSpan) {
+        indexSpan.textContent = idx + 1;
+      }
+    });
+  }
+
+  // --- Column Sorting ---
+  const sortState = { key: null, dir: -1 };
+
+  // Sort on what the row actually shows. Units and entry price live in an input on
+  // every row (a visible one when editable, a hidden one when broker-synced), so
+  // both read the same way. Return is split: editable rows hold the live typed
+  // number, while computed rows render the engine's value and their hidden input
+  // deliberately carries the stored override instead.
+  function rowSortValue(row, key) {
+    // A row with no symbol isn't a holding yet — savePortfolio skips it, so it has
+    // no rank either. Without this its 0 defaults would win an ascending sort and
+    // yank the row being filled in to the top.
+    const symbol = row.querySelector('input[name="symbol"]');
+    if (symbol && symbol.value.trim() === '') return NaN;
+
+    if (key === 'return_pct') {
+      const input = row.querySelector('input[name="return_pct"]');
+      if (input && input.type === 'number') {
+        return input.value.trim() === '' ? NaN : parseFloat(input.value);
+      }
+      const cell = row.querySelector('.return-cell');
+      return cell ? parseFloat(cell.textContent) : NaN;
+    }
+    // Total Value is computed server-side on a market-priced row and typed by the holder
+    // on one with no quote, so the cell is a span in the first case and an input in the
+    // second. Prefer the live typed number, then fall back to data-value — never the cell
+    // text, which carries a currency symbol and thousands separators that parseFloat
+    // truncates at the first comma ("$1,234.56" -> 1).
+    if (key === 'value_native') {
+      const cell = row.querySelector('.value-cell');
+      if (!cell) return NaN;
+      if (cell.tagName === 'INPUT' && cell.value.trim() !== '') return parseFloat(cell.value);
+      const raw = cell.dataset.value;
+      return (raw === undefined || raw === null || raw === '') ? NaN : parseFloat(raw);
+    }
+    const input = row.querySelector(`input[name="${key}"]`);
+    return (!input || input.value.trim() === '') ? NaN : parseFloat(input.value);
+  }
+
+  function sortBy(key) {
+    // Same column re-sorts the other way; a new column starts high-to-low.
+    sortState.dir = (sortState.key === key) ? -sortState.dir : -1;
+    sortState.key = key;
+
+    const tbody = document.getElementById('portfolio-tbody');
+    const rows = [...tbody.querySelectorAll('.portfolio-row')];
+
+    rows.sort((a, b) => {
+      const av = rowSortValue(a, key);
+      const bv = rowSortValue(b, key);
+      // Blank rows (a just-added position, a holding with no return) have no rank,
+      // so park them at the bottom either way rather than letting NaN scramble it.
+      if (isNaN(av) && isNaN(bv)) return 0;
+      if (isNaN(av)) return 1;
+      if (isNaN(bv)) return -1;
+      return (av - bv) * sortState.dir;
+    });
+
+    // Moving the existing nodes keeps every input's live value and the filter's
+    // display state intact — never re-render the rows here.
+    rows.forEach(r => tbody.appendChild(r));
+    reindexRows();
+    updateSortIndicators();
+  }
+
+  function updateSortIndicators() {
+    document.querySelectorAll('.sort-header').forEach(btn => {
+      const isActive = btn.dataset.sortKey === sortState.key;
+      const arrow = btn.querySelector('.sort-arrow');
+      btn.classList.toggle('is-active', isActive);
+      if (!arrow) return;
+      const icon = isActive ? (sortState.dir === 1 ? 'arrow_upward' : 'arrow_downward') : 'unfold_more';
+      arrow.textContent = icon;
+      arrow.setAttribute('data-icon', icon);
+    });
+  }
+
+  function updateFooterStats() {
+    const count = document.querySelectorAll('#portfolio-tbody .portfolio-row').length;
+    document.getElementById('clusters-count').textContent = `Holding Analysis: ${count} Active Clusters`;
+  }
+
+  // Save Portfolio via API
+  async function savePortfolio() {
+    const rows = document.querySelectorAll('#portfolio-tbody .portfolio-row');
+    const payload = [];
+
+    rows.forEach(row => {
+      const symInput = row.querySelector('input[name="symbol"]');
+      const symbol = symInput ? symInput.value.trim().toUpperCase() : '';
+      if (!symbol) return;
+
+      const sharesInput = row.querySelector('input[name="shares"]');
+      const shares = sharesInput ? parseFloat(sharesInput.value) || 0 : 0;
+
+      const priceInput = row.querySelector('input[name="purchase_price"]');
+      const purchase_price = priceInput ? parseFloat(priceInput.value) || 0 : 0;
+
+      const accInput = row.querySelector('input[name="account"]');
+      const account = accInput ? accInput.value.trim() : 'Unknown';
+
+      const ccyInput = row.querySelector('select[name="currency"], input[name="currency"]');
+      const currency = ccyInput ? ccyInput.value.trim().toUpperCase() : 'USD';
+
+      const typeInput = row.querySelector('select[name="asset_type"], input[name="asset_type"]');
+      const asset_type = typeInput ? typeInput.value.trim() : 'Public';
+
+      const retInput = row.querySelector('input[name="return_pct"]');
+      const return_pct = (retInput && retInput.value.trim() !== '') ? parseFloat(retInput.value) : null;
+
+      // Only rows with no market quote carry this input. Empty string rather than null
+      // when it is present but blank: the server has to tell "the holder cleared the
+      // total" (revert to units × price) from "this row never had one" (preserve).
+      const mvInput = row.querySelector('input[name="market_value"]');
+      const market_value = mvInput
+        ? (mvInput.value.trim() === '' ? '' : parseFloat(mvInput.value))
+        : null;
+
+      payload.push({
+        symbol,
+        shares,
+        purchase_price,
+        account,
+        currency,
+        asset_type,
+        return_pct,
+        market_value
+      });
+    });
+
+    // A position with a symbol and no units saves without complaint and is then
+    // worth nothing, in every engine that reads this file. Blank quantities are
+    // ordinary here now — a pasted statement that stated no quantity drafts one
+    // — so the last chance to catch it is on the way out.
+    const noUnits = payload.filter(p => !p.shares).map(p => p.symbol);
+    if (noUnits.length) {
+      const ok = confirm(
+        `${noUnits.length} position(s) have no units: ${noUnits.join(', ')}.\n\n` +
+        `They will be saved holding zero, and will count for nothing in every ` +
+        `allocation, risk and return figure.\n\nSave anyway?`
+      );
+      if (!ok) return;
+    }
+
+    const saveBtn = document.getElementById('save-portfolio-btn');
+    saveBtn.disabled = true;
+    saveBtn.classList.add('opacity-50', 'pointer-events-none');
+    showToast('Synchronizing ledger states and live indexes...', 'info');
+
+    try {
+      const response = await fetch('/api/portfolio/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (response.ok) {
+        showToast('Ledger successfully compiled and synchronized!', 'success');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        showToast('Ledger compilation failed: ' + result.error, 'error');
+        saveBtn.disabled = false;
+        saveBtn.classList.remove('opacity-50', 'pointer-events-none');
+      }
+    } catch (e) {
+      showToast('An unexpected connection error occurred.', 'error');
+      saveBtn.disabled = false;
+      saveBtn.classList.remove('opacity-50', 'pointer-events-none');
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Paste Statement — manual entry for the accounts that cannot sync
+  // ═══════════════════════════════════════════════════════════════════════
+  // The model drafts; this page stages; the user saves. Rows extracted from a
+  // pasted statement are appended to the table as ordinary unsaved inputs and
+  // then take the SAME path as a hand-typed row — savePortfolio reads the DOM,
+  // so there is deliberately no second write path for an extracted position and
+  // nothing downstream can tell the two apart.
+  //
+  // Matching a draft against what is already held is done HERE rather than on
+  // the server, because the table is the live truth: it carries edits the user
+  // has made since the page loaded and rows they added a minute ago, none of
+  // which are in the saved CSV a server-side match would have read.
+
+  let EXTRACTED = [];
+
+  function openPasteModal() {
+    const modal = document.getElementById('paste-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    pasteBackToInput();
+    document.getElementById('paste-text').focus();
+  }
+
+  function closePasteModal() {
+    const modal = document.getElementById('paste-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+
+  function pasteBackToInput() {
+    document.getElementById('paste-stage-input').classList.remove('hidden');
+    document.getElementById('paste-stage-review').classList.add('hidden');
+    document.getElementById('paste-extract-btn').classList.remove('hidden');
+    document.getElementById('paste-apply-btn').classList.add('hidden');
+    document.getElementById('paste-apply-btn').classList.remove('flex');
+    document.getElementById('paste-back-btn').classList.add('hidden');
+    document.getElementById('paste-footnote').textContent =
+      'Read by a language model. Nothing is saved until you review the drafts and press Save Changes.';
+  }
+
+  // What the table already holds, as a lookup a draft can be matched against.
+  // Keyed on symbol AND account: the same ticker in a TFSA and an RRSP are two
+  // positions, and merging them would silently destroy one.
+  function existingRowIndex() {
+    const index = new Map();
+    document.querySelectorAll('#portfolio-tbody .portfolio-row').forEach(row => {
+      const symInput = row.querySelector('input[name="symbol"]');
+      const accInput = row.querySelector('input[name="account"]');
+      if (!symInput || !symInput.value.trim()) return;
+      const key = `${symInput.value.trim().toUpperCase()}|${(accInput ? accInput.value : '').trim().toUpperCase()}`;
+      // A hidden symbol input is how a broker-synced row renders: its values come
+      // from the API on every load, so writing into it would be overwritten
+      // without warning on the next sync.
+      index.set(key, { row, synced: symInput.type === 'hidden' });
+    });
+    return index;
+  }
+
+  function dispositionFor(draft, index) {
+    const key = `${(draft.symbol || '').toUpperCase()}|${(draft.account || '').trim().toUpperCase()}`;
+    const hit = index.get(key);
+    if (!hit) return { kind: 'new', label: 'New row', cls: 'text-primary' };
+    if (hit.synced) {
+      return {
+        kind: 'synced', row: hit.row, cls: 'text-on-surface-variant/50',
+        label: 'Broker-synced — skipped',
+        why: 'This position comes from a live broker connection. A typed copy would be discarded on the next sync.'
+      };
+    }
+    return {
+      kind: 'update', row: hit.row, cls: 'text-[#e0b252]',
+      label: 'Updates existing row',
+      why: 'A row for this symbol and account is already in the table. Its quantity, cost and currency will be replaced by the values shown here.'
+    };
+  }
+
+  async function extractStatement() {
+    const text = document.getElementById('paste-text').value;
+    const errBox = document.getElementById('paste-error');
+    const btn = document.getElementById('paste-extract-btn');
+
+    if (!text.trim()) {
+      errBox.innerHTML = engineNotice('warn', 'Nothing pasted', 'Paste the holdings text from your statement first.');
+      return;
+    }
+
+    errBox.innerHTML = '';
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'pointer-events-none');
+    document.getElementById('paste-footnote').textContent = 'Reading the pasted text…';
+
+    try {
+      const res = await fetch('/api/portfolio/parse-statement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text,
+          default_account: document.getElementById('paste-default-account').value,
+          default_currency: document.getElementById('paste-default-currency').value
+        })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      // `ok:false` is a statement about the READER, not about the text — no
+      // model configured, or an input that was refused. It must never render as
+      // "no holdings found", which is a claim about what the user pasted.
+      if (!data.ok) {
+        errBox.innerHTML = engineNotice('error', 'Could not read the statement', data.reason || 'No reason given.');
+        return;
+      }
+      EXTRACTED = data.rows || [];
+      renderExtractionReview(data);
+    } catch (err) {
+      errBox.innerHTML = engineNotice('error', 'The extraction did not run', `${err}. Nothing was changed.`);
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('opacity-50', 'pointer-events-none');
+      if (document.getElementById('paste-stage-review').classList.contains('hidden')) {
+        document.getElementById('paste-footnote').textContent =
+          'Read by a language model. Nothing is saved until you review the drafts and press Save Changes.';
+      }
+    }
+  }
+
+  function renderExtractionReview(data) {
+    const box = document.getElementById('paste-stage-review');
+    const index = existingRowIndex();
+    let html = '';
+
+    if (!EXTRACTED.length) {
+      html += engineNotice('warn', 'No positions drafted', data.reason || '');
+    } else {
+      html += engineNotice('ok', `${EXTRACTED.length} position(s) drafted`,
+        'Check every row against your statement. Each one quotes the line it was read from, and the quote has been verified to exist in the text you pasted — that it was read CORRECTLY is what you are checking now.');
+    }
+
+    // Discards are itemised, never counted. "9 of your 12 positions" is only
+    // actionable if the user can see which three are missing and why.
+    if ((data.dropped || []).length) {
+      html += `<div class="mt-4 px-4 py-3 rounded-xl border border-[#e0b252]/20 bg-[#e0b252]/5">
+        <p class="text-[10px] font-black uppercase tracking-[0.2em] text-[#e0b252] mb-2">Discarded — add these by hand if you hold them</p>
+        <ul class="space-y-1">${(data.dropped || []).map(d => `<li class="text-[10px] text-on-surface-variant/60 leading-relaxed">• ${esc(d)}</li>`).join('')}</ul>
+      </div>`;
+    }
+
+    if (EXTRACTED.length) {
+      html += `<div class="mt-5 overflow-x-auto"><table class="w-full text-left border-collapse min-w-[880px]">
+        <thead><tr class="text-[9px] uppercase tracking-[0.2em] text-primary/60 font-black border-b border-outline-variant/10">
+          <th class="py-2 pr-3 w-8"></th>
+          <th class="py-2 pr-3">Symbol</th>
+          <th class="py-2 pr-3 text-right">Units</th>
+          <th class="py-2 pr-3 text-right">Cost basis</th>
+          <th class="py-2 pr-3">Account</th>
+          <th class="py-2 pr-3">CCY</th>
+          <th class="py-2 pr-3">Disposition</th>
+        </tr></thead><tbody>`;
+
+      EXTRACTED.forEach((r, i) => {
+        const d = dispositionFor(r, index);
+        r._disposition = d.kind;
+        const disabled = d.kind === 'synced';
+        const inputCls = 'bg-surface-container-highest/40 border border-outline-variant/20 rounded px-2 py-1 text-[10px] text-on-surface focus:border-primary/50 outline-none';
+
+        html += `<tr class="border-b border-outline-variant/5 align-top${disabled ? ' opacity-40' : ''}">
+          <td class="py-2.5 pr-3">
+            <input type="checkbox" class="draft-pick accent-[#4edea3] cursor-pointer" data-draft-index="${i}"
+              ${disabled ? 'disabled' : 'checked'} title="${disabled ? 'Broker-synced — cannot be added here' : 'Include this row'}"/>
+          </td>
+          <td class="py-2.5 pr-3">
+            <input type="text" class="${inputCls} w-24 font-bold uppercase draft-field" data-field="symbol" data-draft-index="${i}" value="${esc(r.symbol)}" ${disabled ? 'disabled' : ''}/>
+            ${r.name ? `<div class="text-[9px] text-on-surface-variant/40 mt-1 max-w-[10rem] truncate" title="${esc(r.name)}">${esc(r.name)}</div>` : ''}
+          </td>
+          <td class="py-2.5 pr-3 text-right">
+            <input type="number" step="any" class="${inputCls} w-24 text-right font-mono draft-field ${r.shares === null ? 'border-[#e0b252]/50' : ''}" data-field="shares" data-draft-index="${i}" value="${r.shares === null ? '' : esc(r.shares)}" placeholder="not stated" ${disabled ? 'disabled' : ''}/>
+          </td>
+          <td class="py-2.5 pr-3 text-right">
+            <input type="number" step="any" class="${inputCls} w-24 text-right font-mono draft-field ${r.purchase_price === null ? 'border-[#e0b252]/50' : ''}" data-field="purchase_price" data-draft-index="${i}" value="${r.purchase_price === null ? '' : esc(r.purchase_price)}" placeholder="not stated" ${disabled ? 'disabled' : ''}/>
+          </td>
+          <td class="py-2.5 pr-3">
+            <input type="text" class="${inputCls} w-32 draft-field" data-field="account" data-draft-index="${i}" value="${esc(r.account)}" placeholder="not stated" ${disabled ? 'disabled' : ''}/>
+          </td>
+          <td class="py-2.5 pr-3">
+            <select class="${inputCls} w-20 draft-field" data-field="currency" data-draft-index="${i}" ${disabled ? 'disabled' : ''}>
+              ${CURRENCY_CODES.map(c => `<option value="${c}"${c === r.currency ? ' selected' : ''}>${c}</option>`).join('')}
+            </select>
+          </td>
+          <td class="py-2.5 pr-3">
+            <span class="text-[9px] font-black uppercase tracking-[0.15em] ${d.cls}" title="${esc(d.why || '')}">${esc(d.label)}</span>
+          </td>
+        </tr>`;
+
+        // The quote and the warnings, under the row they belong to. The quote is
+        // the audit trail: it is the span of the user's own text this row was
+        // read from, and it is what makes the row checkable at all.
+        html += `<tr class="border-b border-outline-variant/5"><td colspan="7" class="pb-3 pt-0">
+          <div class="pl-6 pr-2">
+            <p class="text-[9px] font-mono text-on-surface-variant/35 leading-relaxed break-words" title="The span of your pasted text this row was read from">
+              <span class="text-on-surface-variant/25 uppercase tracking-[0.15em] font-sans font-bold mr-1">read from</span>${esc(r.source_text)}
+            </p>
+            ${(r.warnings || []).map(w => `<p class="text-[9px] text-[#e0b252]/70 mt-1 leading-relaxed">⚠ ${esc(w)}</p>`).join('')}
+          </div>
+        </td></tr>`;
+      });
+
+      html += '</tbody></table></div>';
+    }
+
+    box.innerHTML = html;
+    box.classList.remove('hidden');
+    document.getElementById('paste-stage-input').classList.add('hidden');
+    document.getElementById('paste-extract-btn').classList.add('hidden');
+    document.getElementById('paste-back-btn').classList.remove('hidden');
+
+    const applyBtn = document.getElementById('paste-apply-btn');
+    if (EXTRACTED.length) {
+      applyBtn.classList.remove('hidden');
+      applyBtn.classList.add('flex');
+    }
+    document.getElementById('paste-footnote').textContent =
+      'These rows are drafts. They go into the table above unsaved — press Save Changes when they are right.';
+
+    box.querySelectorAll('.draft-field').forEach(el => {
+      el.addEventListener('input', () => {
+        const draft = EXTRACTED[Number(el.dataset.draftIndex)];
+        if (!draft) return;
+        const field = el.dataset.field;
+        if (field === 'shares' || field === 'purchase_price') {
+          draft[field] = el.value.trim() === '' ? null : Number(el.value);
+        } else if (field === 'symbol') {
+          draft.symbol = el.value.trim().toUpperCase();
+        } else {
+          draft[field] = el.value;
+        }
+      });
+    });
+    updateApplyLabel();
+    box.querySelectorAll('.draft-pick').forEach(cb => cb.addEventListener('change', updateApplyLabel));
+  }
+
+  function updateApplyLabel() {
+    const picked = document.querySelectorAll('#paste-stage-review .draft-pick:checked').length;
+    const label = document.getElementById('paste-apply-label');
+    if (label) label.textContent = picked === 1 ? 'Add 1 row to editor' : `Add ${picked} rows to editor`;
+    const btn = document.getElementById('paste-apply-btn');
+    if (btn) btn.classList.toggle('opacity-40', picked === 0);
+  }
+
+  function applyExtractedRows() {
+    const picks = [...document.querySelectorAll('#paste-stage-review .draft-pick:checked')];
+    if (!picks.length) {
+      showToast('Nothing selected — no rows were added.', 'error');
+      return;
+    }
+
+    const tbody = document.getElementById('portfolio-tbody');
+    const index = existingRowIndex();
+    let added = 0, updated = 0;
+
+    picks.forEach(cb => {
+      const draft = EXTRACTED[Number(cb.dataset.draftIndex)];
+      if (!draft || !draft.symbol) return;
+      // Re-resolved against the table as it is NOW, not as it was when the review
+      // rendered: an edit to the symbol or account field in the review changes
+      // which existing row this draft is about.
+      const d = dispositionFor(draft, index);
+      if (d.kind === 'synced') return;
+
+      if (d.kind === 'update') {
+        // Only fields the draft actually carries. A null quantity means the
+        // statement did not state one, and overwriting a number already in the
+        // table with that would destroy a value the user has, in the name of a
+        // value the model never read.
+        setRowField(d.row, 'shares', draft.shares);
+        setRowField(d.row, 'purchase_price', draft.purchase_price);
+        setRowField(d.row, 'currency', draft.currency);
+        markStaged(d.row);
+        updated++;
+      } else {
+        const tr = buildPortfolioRow({ ...draft, flagBlanks: true });
+        markStaged(tr);
+        tbody.appendChild(tr);
+        added++;
+      }
+    });
+
+    reindexRows();
+    updateFooterStats();
+    closePasteModal();
+
+    const parts = [];
+    if (added) parts.push(`${added} row(s) added`);
+    if (updated) parts.push(`${updated} row(s) updated`);
+    const skipped = picks.length - added - updated;
+    if (skipped > 0) parts.push(`${skipped} skipped as broker-synced`);
+    showToast(`${parts.join(', ')} — not saved yet. Press Save Changes to commit.`, 'success');
+
+    // The rows are in the table and nothing is on disk. Draw the eye to the one
+    // control that changes that, so a staged extraction cannot be mistaken for a
+    // finished one and lost on the next navigation.
+    const saveBtn = document.getElementById('save-portfolio-btn');
+    if (saveBtn) {
+      saveBtn.classList.add('animate-pulse');
+      setTimeout(() => saveBtn.classList.remove('animate-pulse'), 4000);
+    }
+  }
+
+  function setRowField(row, name, value) {
+    if (value === null || value === undefined || value === '') return;
+    const el = row.querySelector(`input[name="${name}"], select[name="${name}"]`);
+    if (!el || el.type === 'hidden') return;
+    el.value = value;
+  }
+
+  function markStaged(row) {
+    row.classList.add('staged-row');
+    row.setAttribute('title', 'Drafted from a pasted statement and not yet saved.');
+  }
+
+  // Upload CSV
+  async function uploadCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    showToast('Uploading ledger manifest...', 'info');
+
+    try {
+        const response = await fetch('/api/portfolio/upload', {
+            method: 'POST',
+            body: formData
+        });
+        const result = await response.json();
+        if (response.ok) {
+            showToast('Ledger uploaded successfully!', 'success');
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+        } else {
+            showToast('Ledger upload failed: ' + result.error, 'error');
+        }
+    } catch (e) {
+        showToast('An unexpected upload error occurred.', 'error');
+    }
+    
+    event.target.value = '';
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Engine read surfaces
+  // ═══════════════════════════════════════════════════════════════════════
+  // esc / engineNotice / loadEnginePanel / fmtShares live in
+  // static/js/engine_panel.js, loaded above. They are shared with /monitor,
+  // which now carries the 5.5 fund-flows and 3.5b event-radar panels.
+  //
+  // That file centralises exactly one rule, which is the rule these engines
+  // exist to protect: a panel with nothing to show must render the ENGINE's
+  // reason for having nothing to say. A blank success state is a different
+  // claim from an absent recorder, and only the engine knows which one is true
+  // — so the renderer is never called with a fault, and never has to guess.
+  //
+  // 4.10a reconciliation is what remains here, and it belongs here: its cause
+  // cell POSTs to /api/portfolio/classify, which makes it part of the editor
+  // rather than something to read.
+
+  // ── 4.10a: position reconciliation ────────────────────────────────────
+  // Labels are deliberately non-causal. The store records that a position row
+  // appeared, grew, shrank or went away — never why. "Bought", "sold",
+  // "deposit" and "withdrawal" must never appear in this map.
+  const RECON_KINDS = {
+    position_opened:   ['First seen',     'text-primary'],
+    position_closed:   ['No longer held', 'text-error'],
+    quantity_increase: ['Quantity up',    'text-primary'],
+    quantity_decrease: ['Quantity down',  'text-error'],
+    cash_increase:     ['Cash up',        'text-primary'],
+    cash_decrease:     ['Cash down',      'text-error']
+  };
+
+  function fmtDelta(v) {
+    const n = Number(v);
+    if (!isFinite(n)) return '—';
+    const s = n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+    return n > 0 ? `+${s}` : s;
+  }
+
+  // Coverage, not span. Observed days against the calendar window, because a
+  // span figure is blind to holes between its endpoints and a hole is exactly
+  // where an unrecorded flow hides.
+  function renderReconCoverage(cov) {
+    const el = document.getElementById('recon-coverage');
+    if (!el) return;
+    if (!cov || !cov.observed_days) { el.innerHTML = '&nbsp;'; return; }
+    const missing = cov.missing_days || 0;
+    const gaps = (cov.gaps || []).length;
+    let html = `<span class="${missing > 0 ? 'text-[#e0b252]' : 'text-primary'} font-bold">`
+             + `${cov.observed_days} of ${cov.calendar_days}</span>`
+             + `<span class="text-on-surface-variant/40"> days recorded</span>`;
+    if (missing > 0) {
+      html += `<br><span class="text-[#e0b252]/70">${missing} missing in ${gaps} gap${gaps === 1 ? '' : 's'}</span>`;
+    }
+    html += `<br><span class="text-on-surface-variant/30">${esc(cov.first_date)} &rarr; ${esc(cov.latest_date)}</span>`;
+    el.innerHTML = html;
+  }
+
+  // Whether 4.10 could run on this window. Deliberately phrased as a blocker
+  // rather than as progress: a TWR computed over three known deposits while a
+  // fourth sits unstated is not "75% right", it is wrong by an unknown amount
+  // in an unknown direction.
+  //
+  // TWO axes, not one, and this banner claimed 4.10 was unblocked off the first
+  // alone until 2026-07-30. `complete` says every change has a stated CAUSE;
+  // `priced` says every external flow also has an AMOUNT. The store records
+  // quantities — shares for a security, currency units for cash — and a
+  // time-weighted return needs money in base currency on the flow's own date.
+  // A window can be fully classified and still unusable, so a banner reading
+  // only `complete` told the user the panel was done while the engine went on
+  // returning `flows_incomplete`.
+  function renderClassificationBanner(cls, baseCurrency) {
+    if (!cls || !cls.changes_seen) return '';
+    const spacer = '<div class="h-4"></div>';
+
+    if (!cls.complete) {
+      return engineNotice('waiting', `${cls.unclassified_count} change(s) have no stated cause`,
+        `${cls.note} Set a cause in the Cause column; nothing here is inferred, and a change nobody needs can stay unstated.`)
+        + spacer;
+    }
+    if (cls.priced === false) {
+      return engineNotice('waiting',
+        `${cls.unpriced_flow_count} flow(s) have a cause but no amount`,
+        `Every change has a stated cause, which is the harder half. A time-weighted return also needs each money-in/money-out flow as an AMOUNT in ${baseCurrency || 'your base currency'} — this store records share counts and currency units, and it will not price a share delta itself. Enter the amounts in the column beside the cause.`)
+        + spacer;
+    }
+    return engineNotice('ok', 'Every change has a stated cause and amount',
+      `${cls.classified_count} of ${cls.changes_seen} classified — ${cls.external_inflows} in, ${cls.external_outflows} out, ${cls.flow_amount_base === null || cls.flow_amount_base === undefined ? 'no net' : fmtMoney(cls.flow_amount_base, baseCurrency)} net. Time-weighted return (4.10) can use this window.`)
+      + spacer;
+  }
+
+  function fmtMoney(v, ccy) {
+    const n = Number(v);
+    if (v === null || v === undefined || !isFinite(n)) return '—';
+    const s = Math.abs(n).toLocaleString(undefined, { maximumFractionDigits: 2, minimumFractionDigits: 2 });
+    return `${n < 0 ? '−' : '+'}${s} ${ccy || ''}`.trim();
+  }
+
+  function renderReconciliation(data, body) {
+    renderReconCoverage(data.coverage);
+
+    // Status first, before `changes` is ever read. no_data and accruing are
+    // claims about the recorder; they are NOT "nothing changed".
+    if (data.status === 'no_data') {
+      body.innerHTML = engineNotice('warn', 'Recorder has not run',
+        `${data.note || ''} Until it has, this panel can say nothing about your holdings in either direction.`);
+      return;
+    }
+    if (data.status === 'accruing') {
+      body.innerHTML = engineNotice('waiting', 'Accruing — one snapshot so far',
+        data.note || 'A reconciliation needs two snapshots to compare. This is an accruing record, not an unchanged portfolio.');
+      return;
+    }
+
+    const changes = data.changes || [];
+    let html = '';
+
+    if (data.spans_gap) {
+      const gapDays = changes.length ? changes[0].gap_days : null;
+      html += engineNotice('warn', 'These two snapshots are not consecutive',
+        `They are ${gapDays === null ? 'more than one day' : gapDays + ' days'} apart, so no change below can be attributed to a single date.`)
+        + '<div class="h-4"></div>';
+    }
+
+    if (!changes.length) {
+      html += engineNotice('ok', 'No changes observed',
+        `Position rows are identical between ${data.prior_date} and ${data.current_date}. Cash moves below ${data.material_cash_min} in the currency of the holding are under the reporting floor.`);
+      body.innerHTML = html;
+      return;
+    }
+
+    const baseCurrency = data.base_currency || '';
+    html += renderClassificationBanner(data.classification, baseCurrency);
+
+    html += `<div class="overflow-x-auto"><table class="w-full text-left border-collapse min-w-[980px]">
+      <thead><tr class="text-[9px] uppercase tracking-[0.2em] text-primary/60 font-black border-b border-outline-variant/10">
+        <th class="py-2 pr-4">Observed</th>
+        <th class="py-2 pr-4">Account</th>
+        <th class="py-2 pr-4">Symbol</th>
+        <th class="py-2 pr-4 text-right">Prior</th>
+        <th class="py-2 pr-4 text-right">Current</th>
+        <th class="py-2 pr-4 text-right">Delta</th>
+        <th class="py-2 pr-4">Cause</th>
+        <th class="py-2 pr-4" title="Money in or out, in ${esc(baseCurrency)}. Only a flow needs one.">Amount${baseCurrency ? ` (${esc(baseCurrency)})` : ''}</th>
+      </tr></thead><tbody>`;
+
+    changes.forEach((c, i) => {
+      const kind = RECON_KINDS[c.kind] || [c.kind, 'text-on-surface-variant'];
+      const ccy = c.currency ? `<span class="text-on-surface-variant/30 font-normal ml-1">${esc(c.currency)}</span>` : '';
+      html += `<tr class="border-b border-outline-variant/5 text-[11px] font-mono">
+        <td class="py-2.5 pr-4 ${kind[1]} font-bold whitespace-nowrap">${esc(kind[0])}</td>
+        <td class="py-2.5 pr-4 text-on-surface-variant/70">${esc(c.account || 'Unknown')}</td>
+        <td class="py-2.5 pr-4 text-on-surface font-bold">${esc(c.symbol)}${ccy}</td>
+        <td class="py-2.5 pr-4 text-right text-on-surface-variant/60">${fmtShares(c.prior_shares)}</td>
+        <td class="py-2.5 pr-4 text-right text-on-surface-variant/60">${fmtShares(c.current_shares)}</td>
+        <td class="py-2.5 pr-4 text-right ${kind[1]} font-bold">${fmtDelta(c.delta)}</td>
+        <td class="py-2.5 pr-4">${causeCell(c, i)}</td>
+        <td class="py-2.5 pr-4">${amountCell(c, i, baseCurrency)}</td>
+      </tr>`;
+      if (c.stale_classification) {
+        html += staleRow(c);
+      }
+    });
+
+    html += '</tbody></table></div>';
+    html += `<p class="text-[10px] text-on-surface-variant/40 mt-4 leading-relaxed max-w-4xl">${esc(data.note || '')}</p>`;
+    if (data.truncated) {
+      html += `<p class="text-[10px] text-[#e0b252]/70 mt-2 font-mono">Showing ${changes.length} of ${data.change_count} observed changes.</p>`;
+    }
+    body.innerHTML = html;
+    wireCauseSelects(changes, body);
+    wireAmountInputs(changes, body, baseCurrency);
+  }
+
+  // ── 4.10a classification: the cause cell is an ENTRY POINT ────────────
+  // Loaded from /api/portfolio/classification-options so the choices offered
+  // here and the causes classify_change() accepts cannot drift. Until it
+  // arrives the cell renders as a read-only badge — an empty <select> would be
+  // a control that silently cannot be used, which is the "shipped a store with
+  // no reachable writer" failure this item exists downstream of.
+  let CAUSE_OPTIONS = null;
+
+  async function loadCauseOptions() {
+    try {
+      const res = await fetch('/api/portfolio/classification-options');
+      if (!res.ok) return;
+      CAUSE_OPTIONS = (await res.json()).causes || null;
+    } catch (err) { /* the badge fallback is the correct degradation */ }
+  }
+
+  function causeBadge(text, cls) {
+    return `<span class="px-2 py-0.5 rounded bg-surface-container-highest/50 border border-outline-variant/10 text-[9px] uppercase tracking-[0.15em] ${cls} font-bold">${esc(text)}</span>`;
+  }
+
+  function causeCell(c, i) {
+    const current = c.cause || 'unclassified';
+    if (!CAUSE_OPTIONS) {
+      return causeBadge(c.classified ? (c.cause_label || current) : 'Unclassified',
+                        c.classified ? 'text-primary/70' : 'text-on-surface-variant/50');
+    }
+    // The blank option is first and is what an unclassified change SHOWS. It
+    // reads "Not stated" rather than "Select…" because the empty value is a
+    // real state of the ledger, not a prompt the user has failed to answer.
+    let opts = `<option value="unclassified"${current === 'unclassified' ? ' selected' : ''}>Not stated</option>`;
+    CAUSE_OPTIONS.forEach(o => {
+      opts += `<option value="${esc(o.value)}"${current === o.value ? ' selected' : ''} title="${esc(o.description)}">${esc(o.label)}</option>`;
+    });
+    const flag = c.is_external_flow
+      ? `<span class="ml-2 text-[9px] uppercase tracking-[0.15em] text-[#e0b252]/80 font-bold" title="Removed from time-weighted return as investor capital">Flow</span>`
+      : '';
+    return `<select data-change-index="${i}" class="cause-select bg-surface-container-highest/40 border border-outline-variant/20 rounded px-2 py-1 text-[10px] text-on-surface focus:border-primary/50 outline-none">${opts}</select>${flag}`;
+  }
+
+  // ── 4.10's second axis: the AMOUNT a flow moved ───────────────────────
+  // Shipped 2026-07-30, and it exists because the gate shipped without it that
+  // morning. `classify_change` gained an optional `amount_base`; nothing in the
+  // UI sent one, so 4.10 could never leave `flows_incomplete → unpriced_flows`
+  // and it would have read as the user declining to answer. That is this
+  // project's most-repeated failure — a store with no reachable writer looks
+  // exactly like a store nobody filled in — and 2.9's risk-constraints screen
+  // is the precedent: months of "blocked on you" for a question never asked.
+  //
+  // Three rules the cell follows:
+  //
+  //  1. **Only a flow gets a box.** Read from the cause's own
+  //     `is_external_flow`, not from a hardcoded pair of names, for the same
+  //     anti-drift reason the cause list is fetched rather than written here.
+  //     An amount on a trade or a DRIP would invite a consumer to net it
+  //     against something; TWR removes external flows and nothing else.
+  //  2. **A cause saves WITHOUT an amount.** They are separate writes. "It was
+  //     a deposit" is a real answer to a real question even when the figure is
+  //     not to hand, and demanding both would make the cause unstatable.
+  //  3. **The magnitude is what is typed; the SIGN comes from the cause.** The
+  //     server derives it, so a user entering 5000 for a withdrawal and another
+  //     entering -5000 record the same thing. The box therefore shows no minus
+  //     and the direction is stated in words beside it.
+  function isFlowCause(cause) {
+    if (!CAUSE_OPTIONS) return false;
+    const opt = CAUSE_OPTIONS.find(o => o.value === cause);
+    return !!(opt && opt.is_external_flow);
+  }
+
+  function amountCell(c, i, baseCurrency) {
+    const cause = c.cause || 'unclassified';
+    if (!isFlowCause(cause)) {
+      // Not a blank cell: blank reads as "you have not filled this in". An
+      // em dash with a reason reads as "nothing is being asked of you here".
+      const why = c.classified ? 'Not a flow — no amount needed' : 'Set a cause first';
+      return `<span class="text-on-surface-variant/25 text-[10px]" title="${esc(why)}">&mdash;</span>`;
+    }
+
+    const stated = c.amount_base;
+    const has = stated !== null && stated !== undefined && isFinite(Number(stated));
+    const direction = cause === 'external_inflow' ? 'in' : 'out';
+    const dirCls = cause === 'external_inflow' ? 'text-primary/70' : 'text-error/70';
+
+    return `<div class="flex items-center gap-1.5">
+        <input type="number" step="0.01" min="0" inputmode="decimal"
+               data-change-index="${i}" data-cause="${esc(cause)}"
+               value="${has ? esc(Math.abs(Number(stated))) : ''}"
+               placeholder="${has ? '' : 'amount'}"
+               title="Money ${direction}, as a positive number in ${esc(baseCurrency || 'your base currency')}. The direction comes from the cause, not from a minus sign."
+               class="flow-amount w-24 bg-surface-container-highest/40 border ${has ? 'border-outline-variant/20' : 'border-[#e0b252]/40'} rounded px-2 py-1 text-[10px] text-on-surface text-right focus:border-primary/50 outline-none">
+        <span class="text-[9px] uppercase tracking-[0.15em] ${dirCls} font-bold shrink-0">${direction}</span>
+      </div>`;
+  }
+
+  function wireAmountInputs(changes, body, baseCurrency) {
+    body.querySelectorAll('.flow-amount').forEach(input => {
+      const commit = async () => {
+        const change = changes[Number(input.dataset.changeIndex)];
+        if (!change) return;
+
+        const raw = input.value.trim();
+        // An emptied box is a RETRACTION of the amount, not a zero. Zero is a
+        // legitimate stated value ("this flow moved nothing"), so the two must
+        // not collapse — and re-saving the cause with a null amount is how the
+        // append-only ledger records that someone took the figure back.
+        const amount = raw === '' ? null : Number(raw);
+        if (amount !== null && !isFinite(amount)) {
+          input.value = '';
+          alert('That is not a number. Nothing was recorded.');
+          return;
+        }
+        const prior = change.amount_base;
+        if (amount === prior || (amount === null && (prior === null || prior === undefined))) return;
+
+        input.disabled = true;
+        try {
+          const res = await fetch('/api/portfolio/classify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // The cause rides along unchanged: `classify_change` appends a whole
+            // record, so omitting it would write an amount against no cause and
+            // last-write-wins would erase the classification.
+            body: JSON.stringify({
+              change,
+              cause: input.dataset.cause,
+              amount_base: amount,
+              base_currency: baseCurrency || '',
+            }),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          // Re-read: `priced` and the net figure are computed server-side over
+          // ALL changes, and a locally-updated banner would be a number this
+          // page made up.
+          loadEnginePanel('/api/portfolio/reconciliation', 'recon-body', renderReconciliation);
+        } catch (err) {
+          input.value = prior === null || prior === undefined ? '' : Math.abs(Number(prior));
+          input.disabled = false;
+          alert(`Could not save that amount: ${err}. Nothing was recorded.`);
+        }
+      };
+
+      input.addEventListener('blur', commit);
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+    });
+  }
+
+  // A classification whose underlying numbers moved. Shown as its own row
+  // rather than folded into the cell, because "you answered this, and the
+  // answer no longer applies" is a different thing to communicate than "this
+  // was never answered" — and reverting to a blank select without saying why
+  // would look like the save had failed.
+  function staleRow(c) {
+    const s = c.stale_classification;
+    return `<tr class="border-b border-outline-variant/5">
+      <td colspan="8" class="px-0 pb-3">
+        <div class="flex items-start gap-2 px-3 py-2 rounded-lg border border-[#e0b252]/20 bg-[#e0b252]/5">
+          <span class="material-symbols-outlined text-[13px] text-[#e0b252] shrink-0" data-icon="history">history</span>
+          <p class="text-[10px] text-on-surface-variant/60 leading-relaxed">
+            Previously stated as <span class="text-[#e0b252] font-bold">${esc(s.cause)}</span>
+            against a delta of ${esc(s.against_delta)}, which now reads ${esc(s.now_delta)}.
+            ${esc(s.note)}
+          </p>
+        </div>
+      </td></tr>`;
+  }
+
+  function wireCauseSelects(changes, body) {
+    body.querySelectorAll('.cause-select').forEach(sel => {
+      sel.addEventListener('change', async () => {
+        const change = changes[Number(sel.dataset.changeIndex)];
+        if (!change) return;
+        const prev = change.cause || 'unclassified';
+        sel.disabled = true;
+        try {
+          const res = await fetch('/api/portfolio/classify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            // The whole change, not just its id: the server fingerprints the
+            // share values so a later snapshot rewrite cannot re-point this
+            // answer at different numbers.
+            body: JSON.stringify({ change, cause: sel.value }),
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          // Re-read rather than patching in place: the completeness figure and
+          // the 4.10 gate are computed server-side over ALL changes, and a
+          // locally-updated count would be a number this page made up.
+          loadEnginePanel('/api/portfolio/reconciliation', 'recon-body', renderReconciliation);
+        } catch (err) {
+          sel.value = prev;
+          sel.disabled = false;
+          alert(`Could not save that classification: ${err}. Nothing was recorded.`);
+        }
+      });
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Options first: the reconciliation panel degrades to a read-only badge
+    // without them, so awaiting here is what makes the cause cell an entry
+    // point rather than a label.
+    await loadCauseOptions();
+    loadEnginePanel('/api/portfolio/reconciliation', 'recon-body', renderReconciliation);
+  });
+</script>
+<style>
+/* Sortable column headers. Buttons don't inherit the header row's typography, so
+   restate it here rather than repeating a dozen utility classes on each one. */
+.sort-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: rgba(78, 222, 163, 0.8);
+  cursor: pointer;
+  transition: color 150ms;
+  /* 9px text alone leaves a ~14px-tall hit target. Pad the click area out and pull
+     the same amount back in as margin, so it stays easy to hit without moving. */
+  padding: 8px 4px;
+  margin: -8px -4px;
+}
+.sort-header:hover,
+.sort-header.is-active { color: #4edea3; }
+.sort-arrow {
+  font-size: 12px;
+  opacity: 0.3;
+  transition: opacity 150ms;
+}
+.sort-header:hover .sort-arrow { opacity: 0.65; }
+.sort-header.is-active .sort-arrow { opacity: 1; }
+
+/* A row drafted from a pasted statement and not yet saved. The marker has to
+   survive the modal closing — once it is gone, this is the only thing telling
+   the user which rows are still uncommitted. */
+.staged-row {
+  background: rgba(78, 222, 163, 0.05);
+  box-shadow: inset 3px 0 0 rgba(78, 222, 163, 0.6);
+}
+
+/* Markdown styles */
+.markdown-content p { margin-bottom: 1rem; color: #b9c8de; }
+.markdown-content blockquote { padding-left: 1rem; border-left: 4px solid #4edea3; color: #b9c8de; font-style: italic; }
+.markdown-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; color: #b9c8de; }
+.markdown-content li { margin-bottom: 0.5rem; }
+.markdown-content strong { color: #4edea3; }
+.markdown-content h1, .markdown-content h2, .markdown-content h3, .markdown-content h4 { color: #dae2fd; font-family: 'Manrope', sans-serif; font-weight: bold; margin-top: 1.5rem; margin-bottom: 0.5rem;}
+</style>
+{% endblock %}
