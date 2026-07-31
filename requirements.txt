@@ -7,7 +7,7 @@
 # --- Web Server ---
 fastapi>=0.135.0
 uvicorn>=0.49.0
-python-multipart>=0.0.12
+python-multipart>=0.0.32
 starlette>=1.2.1
 
 # --- Auth (multi-user login → token → profile) ---
