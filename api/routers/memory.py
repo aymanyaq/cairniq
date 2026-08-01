@@ -179,6 +179,42 @@ async def api_set_target_allocation(payload: dict = Body(...)):
     return {"status": "success", **result}
 
 
+@router.get("/api/memory/secular_themes")
+async def api_get_secular_themes():
+    """The user's stated structural convictions. `[]` means they have stated none.
+
+    Same contract as the stores above, and it binds hardest here: a tagged theme
+    SUPPRESSES trim recommendations every other engine would make, so a theme the
+    app supplied would not merely be quoted back as the user's own conviction —
+    it would silently veto sell advice on whatever it covered. The field shipped
+    with a house thesis as its default and did exactly that.
+
+    An empty list is an UNANSWERED question. It is never rendered as "the user
+    holds no long-term conviction", because that reads as permission to trim.
+    """
+    from tools.memory import get_secular_themes
+
+    return {"secular_themes": get_secular_themes()}
+
+
+@router.post("/api/memory/secular_themes")
+async def api_set_secular_themes(payload: dict = Body(...)):
+    """Store or clear the secular themes. `themes: null` or `[]` clears them.
+
+    Clearing means no theme on record and restores nothing. Each theme needs a
+    name, a conviction level the user picked, and at least one condition that
+    would make them trim it — a theme with no trim rule is a standing order to
+    hold through anything, which is refused as an empty box and accepted only as
+    a sentence the user wrote. Nothing is written unless every row passes.
+    """
+    from tools.memory import set_secular_themes
+
+    result = set_secular_themes(payload.get("themes"))
+    if not result.get("ok"):
+        return JSONResponse(result, status_code=400)
+    return {"status": "success", **result}
+
+
 @router.get("/api/memory/account_jurisdictions")
 async def api_get_account_jurisdictions():
     """Every account the portfolio names, and how its tax jurisdiction resolves.

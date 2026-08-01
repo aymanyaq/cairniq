@@ -51,10 +51,23 @@ logger = logging.getLogger(__name__)
 # Status vocabulary. "unreadable" is distinct from "empty" on purpose: a store
 # that could not be read is UNVERIFIED, and reporting it as empty would be this
 # surface inventing a fact about the user in the one place that must not.
+#
+# "not_stated" is the fourth word and the newest, and it is distinct from "empty"
+# for the mirror-image reason: an OPTIONAL input nobody has stated is COMPLETE.
+# Every other row here reports a blank that switches a shipped feature off, so
+# "empty" carries a cost by construction; a row whose blank costs nothing needs
+# its own word, or the page starts chasing an answer it has no business chasing
+# and this surface becomes the nag it says it is not.
 STATUS_SET = "set"
 STATUS_PARTIAL = "partial"
 STATUS_EMPTY = "empty"
+STATUS_NOT_STATED = "not_stated"
 STATUS_UNREADABLE = "unreadable"
+
+# Rows whose blank is not a gap. Kept as a set rather than a flag on the row so
+# the roll-up below can be read in one place: an optional row never lands in the
+# "stated / of" figure and never darkens a capability.
+OPTIONAL_KEYS = frozenset({"secular_themes"})
 
 CONTRACT = (
     "A blank is a valid answer. Nothing here is filled in on your behalf — the page "
@@ -463,6 +476,86 @@ def _account_jurisdictions_input() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Secular themes (3.1's Stage-1 overlay) — the one OPTIONAL row
+# ---------------------------------------------------------------------------
+# Added 2026-07-31 alongside the entry screen that finally made the store
+# writable. It earns a row for the reason every row here exists — the store had
+# no writer, so nobody could tell a user who declined to state a theme from a
+# user who was never able to — and it breaks the mould for a reason worth
+# spelling out, because the temptation is to make it look like the others.
+#
+# Nothing goes dark without a theme. The daily priority still runs, still ranks,
+# still recommends; it simply weighs every holding as a tactical position. That
+# is a DIFFERENT DEFAULT, not a switched-off feature, and stating a theme is the
+# user choosing to raise the bar on part of their book rather than repairing
+# something broken. So this row carries no cost line, darkens no capability, and
+# is excluded from the "stated" count: a profile with no theme is complete.
+#
+# The inverse error is the one that made the store dangerous in the first place —
+# treating the blank as a statement. It is not read as "the user holds no
+# long-term conviction" here any more than it is anywhere else.
+
+_SECULAR_THEMES_CONSEQUENCE = (
+    "A blank here is a complete answer and nothing is switched off by it. With no "
+    "conviction on record every holding is weighed as a tactical position, so a name "
+    "you mean to hold for a decade can be put up for trimming on the same evidence as "
+    "any other. Naming one raises that bar to the exit rules you write for it, and "
+    "those rules are the only thing that can clear it."
+)
+
+_SECULAR_THEMES_FEEDS = (
+    "The long-term convictions your daily priority is read against, and the exit rules "
+    "that decide when one of them may be cut.",
+)
+
+_SECULAR_THEMES_ROADMAP = ("3.1",)
+
+
+def _secular_themes_input() -> dict[str, Any]:
+    from tools.memory import get_secular_themes
+
+    themes = get_secular_themes()
+
+    return {
+        "key": "secular_themes",
+        "label": "Structural convictions",
+        # Never STATUS_EMPTY. That word is spoken for by the rows whose blank
+        # costs something, and the page paints it as a failure.
+        "status": STATUS_SET if themes else STATUS_NOT_STATED,
+        "authored_by": "you",
+        # A count, not the themes themselves — those are the user's own words and
+        # ride in `observed`, which the contract test excludes from its scan for
+        # exactly this reason.
+        "stated": {"themes": len(themes)} if themes else {},
+        "observed": {
+            "themes": [str(t.get("theme") or "") for t in themes],
+            "set_at": max((str(t.get("set_at") or "") for t in themes), default=""),
+        },
+        # Nothing is required, so nothing can be missing. The page draws its strip
+        # of field marks from these two lists and correctly draws none here.
+        "required": [],
+        "optional_present": ["themes"] if themes else [],
+        "answered_blank": [],
+        # Carried even though `missing` is empty, because this is the sentence the
+        # editor shows while you decide whether to fill the box in — the case
+        # `inert` structurally cannot cover. Same reason the limits editor reads
+        # this map rather than keeping its own copy of the prose.
+        "consequence_by_field": {"themes": _SECULAR_THEMES_CONSEQUENCE},
+        "missing": [],
+        "feeds": list(_SECULAR_THEMES_FEEDS),
+        "inert": [],
+        # Empty in BOTH directions, and deliberately so. Listing a capability here
+        # would put it on the switchboard, where it would read as lit or dark —
+        # and neither is true of a feature that works the same either way.
+        "capabilities": [],
+        "capabilities_dark": [],
+        "cost": "",
+        "roadmap": list(_SECULAR_THEMES_ROADMAP),
+        "entry": "Context › Structural Convictions",
+    }
+
+
+# ---------------------------------------------------------------------------
 # Feedback ratings (1.5's store; 1.5b's few-shot pool)
 # ---------------------------------------------------------------------------
 
@@ -630,6 +723,7 @@ _BUILDERS = (
     _target_allocation_input,
     _account_jurisdictions_input,
     _wealth_goal_input,
+    _secular_themes_input,
     _feedback_ratings_input,
 )
 
@@ -642,6 +736,7 @@ _UNREADABLE_LABELS = {
     "_target_allocation_input": ("target_allocation", "Target allocation"),
     "_account_jurisdictions_input": ("account_jurisdictions", "Account jurisdictions"),
     "_wealth_goal_input": ("wealth_goal", "Wealth goal"),
+    "_secular_themes_input": ("secular_themes", "Structural convictions"),
     "_feedback_ratings_input": ("feedback_ratings", "Answer ratings"),
 }
 
@@ -691,12 +786,21 @@ def build_profile_readiness() -> dict[str, Any]:
         except Exception as e:  # noqa: BLE001 — a bad store yields a row, not a 500
             inputs.append(_unreadable(builder.__name__, e))
 
+    required_rows = [i for i in inputs if i["key"] not in OPTIONAL_KEYS]
     counts = {
         "total": len(inputs),
         STATUS_SET: sum(1 for i in inputs if i["status"] == STATUS_SET),
         STATUS_PARTIAL: sum(1 for i in inputs if i["status"] == STATUS_PARTIAL),
         STATUS_EMPTY: sum(1 for i in inputs if i["status"] == STATUS_EMPTY),
+        STATUS_NOT_STATED: sum(1 for i in inputs if i["status"] == STATUS_NOT_STATED),
         STATUS_UNREADABLE: sum(1 for i in inputs if i["status"] == STATUS_UNREADABLE),
+        # The "N of M stated" figure, and the reason it is not `set` over `total`:
+        # an optional row in that fraction would report a complete profile as
+        # incomplete forever, since the only way to close it is to state a
+        # conviction the user may simply not have. `total` stays the row count so
+        # nothing reading it has to know which rows are optional.
+        "required_total": len(required_rows),
+        "required_set": sum(1 for i in required_rows if i["status"] == STATUS_SET),
     }
     # The switchboard: distinct capabilities across every store, split by whether
     # anything is dark. Deduped across rows AND within them, which `inert_count`

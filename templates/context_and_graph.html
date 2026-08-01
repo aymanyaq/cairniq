@@ -271,6 +271,52 @@
         </div>
       </section>
 
+      <!-- Structural Convictions (Roadmap 3.1's Stage-1 overlay) — the themes a
+           position is held through noise on.
+
+           This is the store with the most authority and, until this screen, the
+           least defensible history: a tagged theme SUPPRESSES trim advice every
+           other engine would give, and the field shipped with a house thesis as
+           its DEFAULT. Because a missing key is back-filled on first read, live
+           profiles acquired that conviction without anyone stating it and had it
+           quoted back to them as their own. Emptying the default closed the
+           fabrication and left the store unwritable — nothing anywhere could set
+           one — which is the same shape target_allocation was in above.
+
+           So the rule this screen exists to enforce: a theme only ever comes
+           from you. Nothing infers one from what you hold, and no draft is
+           stored without your words in it.
+
+           A theme needs at least one exit rule. A theme with none is an
+           instruction to hold through anything — the strongest standing order in
+           the app, and not something anyone should reach by leaving a box
+           empty. Say it in a rule of your own if you mean it. -->
+      <section class="flex flex-col gap-2 flex-shrink-0">
+        <div class="flex items-baseline justify-between px-1">
+          <div class="flex items-baseline gap-2">
+            <p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Structural Convictions</p>
+            <span id="st-status" class="text-[10px] font-black uppercase tracking-widest text-on-surface-variant/40"></span>
+          </div>
+          <p class="text-[10px] text-on-surface-variant/60">Optional. Having none is a complete answer, and nothing is switched off by it.</p>
+        </div>
+        <div id="st-rows" class="flex flex-col gap-2">
+          <p class="text-[10px] text-on-surface-variant/50 px-1">Reading your convictions&hellip;</p>
+        </div>
+        <div class="flex justify-between items-center gap-2">
+          <button onclick="addSecularTheme()" class="bg-surface-container-high text-on-surface-variant hover:text-on-surface font-bold py-2 px-4 rounded-lg text-xs transition-colors flex items-center gap-2 border border-outline-variant/10">
+            <span class="material-symbols-outlined text-sm">add</span>
+            Add a conviction
+          </button>
+          <button onclick="saveSecularThemes()" class="bg-primary/10 text-primary hover:bg-primary/20 font-bold py-2 px-8 rounded-lg text-xs transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">flag</span>
+            Save Convictions
+          </button>
+        </div>
+        <p class="text-[10px] text-on-surface-variant/50 px-1 leading-snug">
+          A conviction here <span class="text-on-surface font-bold">raises the bar for trimming</span>, it does not remove it: the position can still be cut, but only on an exit rule you wrote &mdash; overbought readings and rotation calls alone will not do it. Leaving this empty is not read as having no convictions; it is read as a question nobody has asked you, and it <span class="text-on-surface font-bold">never becomes a reason to sell</span>.
+        </p>
+      </section>
+
       <!-- Account Jurisdictions (Roadmap 4.7a) — which country's tax rules apply
            to each account.
 
@@ -1154,6 +1200,229 @@ function saveTargetAllocation() {
 }
 
 // ============================================================
+// STRUCTURAL CONVICTIONS (Roadmap 3.1's Stage-1 overlay)
+// ============================================================
+// Rows come from GET /api/memory/secular_themes and go back as a whole list, so
+// removing a card removes the theme. A merge would leave a deleted conviction
+// un-deletable, and this is the one store where a stale row keeps vetoing sell
+// advice on a position long after the user stopped believing in it.
+//
+// NOTHING ON THIS SCREEN PROPOSES A THEME. The conviction selector opens with no
+// level chosen, the placeholders describe the shape of an answer rather than an
+// answer, and no field is pre-filled on a new card. This is the store that
+// shipped with a house thesis as its default and had it read back to live users
+// as their own stated conviction; every blank here stays blank until typed in.
+
+const ST_CONVICTIONS = ['high', 'medium', 'low'];
+
+function stLabel(text, hint) {
+  const label = document.createElement('p');
+  label.className = 'text-[10px] uppercase tracking-widest text-on-surface-variant/60 font-bold mb-0.5';
+  label.textContent = text;
+  if (hint) {
+    const span = document.createElement('span');
+    span.className = 'text-on-surface-variant/40 normal-case font-normal';
+    span.textContent = ' ' + hint;
+    label.appendChild(span);
+  }
+  return label;
+}
+
+function stField(labelText, hint, control, className) {
+  const wrap = document.createElement('div');
+  wrap.className = 'flex flex-col ' + (className || '');
+  wrap.appendChild(stLabel(labelText, hint));
+  wrap.appendChild(control);
+  return wrap;
+}
+
+function stInput(field, value, placeholder) {
+  const el = document.createElement('input');
+  el.type = 'text';
+  el.dataset.st = field;
+  el.className = 'bg-transparent border-none p-0 text-sm font-headline text-on-surface w-full focus:ring-0';
+  el.value = value || '';
+  el.placeholder = placeholder || '';
+  return el;
+}
+
+function stLines(field, lines, placeholder) {
+  const el = document.createElement('textarea');
+  el.rows = 3;
+  el.dataset.st = field;
+  el.className = 'bg-transparent border-none p-0 text-sm text-on-surface w-full focus:ring-0 resize-y leading-snug';
+  el.value = (lines || []).join('\n');
+  el.placeholder = placeholder || '';
+  return el;
+}
+
+// Opens on nothing, every time. A pre-selected level would be the page stating
+// how strongly the user believes something — the exact fabrication the default
+// thesis committed, in miniature.
+function stConviction(value) {
+  const el = document.createElement('select');
+  el.dataset.st = 'conviction';
+  el.className = 'bg-transparent border-none p-0 text-sm font-headline font-bold text-on-surface w-full focus:ring-0';
+  const blank = document.createElement('option');
+  blank.value = '';
+  blank.textContent = '— pick one —';
+  el.appendChild(blank);
+  ST_CONVICTIONS.forEach(level => {
+    const opt = document.createElement('option');
+    opt.value = level;
+    opt.textContent = level;
+    el.appendChild(opt);
+  });
+  el.value = ST_CONVICTIONS.includes(value) ? value : '';
+  return el;
+}
+
+function secularThemeCard(theme) {
+  const t = theme || {};
+  const card = document.createElement('div');
+  card.dataset.stRow = '1';
+  card.className = 'bg-surface-container-high p-3 rounded-xl border border-outline-variant/10 flex flex-col gap-3';
+
+  const top = document.createElement('div');
+  top.className = 'grid grid-cols-1 md:grid-cols-4 gap-3';
+  top.appendChild(stField('Conviction', '', stInput('theme', t.theme, 'What you believe in'), 'md:col-span-2'));
+  top.appendChild(stField('Strength', '', stConviction(t.conviction)));
+  top.appendChild(stField('Horizon', '(optional)', stInput('horizon', t.horizon, 'How long')));
+  card.appendChild(top);
+
+  card.appendChild(stField('Why', '(optional)',
+    stInput('rationale', t.rationale, 'In your own words')));
+
+  const rules = document.createElement('div');
+  rules.className = 'grid grid-cols-1 md:grid-cols-2 gap-3';
+  // The required half. A theme with no exit rule holds through anything, so the
+  // hint names the consequence rather than offering a rule to copy.
+  rules.appendChild(stField('Trim only if', '(one per line — at least one)',
+    stLines('trim_triggers', t.trim_triggers,
+            'Without a rule here this is held through anything')));
+  rules.appendChild(stField('Never trim for', '(one per line, optional)',
+    stLines('do_not_trim_for', t.do_not_trim_for,
+            'Arguments you have already rejected')));
+  card.appendChild(rules);
+
+  const foot = document.createElement('div');
+  foot.className = 'flex items-center justify-between gap-2';
+  const stamp = document.createElement('p');
+  stamp.className = 'text-[9px] text-on-surface-variant/40 italic';
+  stamp.textContent = t.set_at ? 'Stated ' + String(t.set_at).slice(0, 10) : 'Not saved yet';
+  foot.appendChild(stamp);
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'text-[10px] uppercase tracking-widest font-bold text-on-surface-variant/50 hover:text-error transition-colors';
+  remove.textContent = 'Remove';
+  // Removes the card only. Nothing is deleted until Save, which posts whatever
+  // cards remain — so a mis-click is undone by reloading rather than by an undo
+  // this page would have to invent.
+  remove.addEventListener('click', () => {
+    card.remove();
+    renderSecularEmptyState();
+  });
+  foot.appendChild(remove);
+  card.appendChild(foot);
+
+  return card;
+}
+
+// The message when there are no cards. It has to say BOTH halves: nothing is
+// broken by leaving this empty, and the emptiness is not read as a statement
+// that the user holds no long-term conviction.
+function renderSecularEmptyState() {
+  const box = document.getElementById('st-rows');
+  if (!box) return;
+  const existing = box.querySelector('[data-st-empty]');
+  const hasCards = box.querySelector('[data-st-row]');
+  if (hasCards) {
+    if (existing) existing.remove();
+    return;
+  }
+  if (existing) return;
+  const note = document.createElement('p');
+  note.dataset.stEmpty = '1';
+  note.className = 'text-[10px] text-on-surface-variant/50 px-1 leading-snug';
+  note.textContent = 'None on record. Nothing is switched off by that, and it is not '
+    + 'taken to mean you hold no long-term convictions — only that nobody has asked.';
+  box.appendChild(note);
+}
+
+function addSecularTheme() {
+  const box = document.getElementById('st-rows');
+  if (!box) return;
+  const card = secularThemeCard(null);
+  box.appendChild(card);
+  renderSecularEmptyState();
+  const first = card.querySelector('[data-st="theme"]');
+  if (first) first.focus();
+}
+
+async function loadSecularThemes() {
+  const box = document.getElementById('st-rows');
+  if (!box) return;
+  try {
+    const res = await fetch('/api/memory/secular_themes');
+    const data = await res.json();
+    const themes = data.secular_themes || [];
+    box.replaceChildren(...themes.map(secularThemeCard));
+    renderSecularEmptyState();
+  } catch (e) {
+    console.error('Structural convictions could not be read:', e);
+    // Never falls back to an empty editor. A blank list here is a claim about
+    // the user's convictions, and a fetch that failed made no such claim — the
+    // difference between "none stated" and "unread" is the whole point.
+    box.replaceChildren(Object.assign(document.createElement('p'), {
+      className: 'text-[10px] text-error px-1',
+      textContent: 'Your convictions could not be read. Nothing is implied about them by '
+        + 'this failure — saving now would overwrite whatever is on file.'
+    }));
+  }
+}
+
+function stSplitLines(text) {
+  return (text || '').split('\n').map(s => s.trim()).filter(Boolean);
+}
+
+function collectSecularThemes() {
+  return Array.from(document.querySelectorAll('#st-rows [data-st-row]'))
+    .map(card => {
+      const read = (name) => {
+        const el = card.querySelector('[data-st="' + name + '"]');
+        return el ? el.value : '';
+      };
+      return {
+        theme: read('theme').trim(),
+        conviction: read('conviction'),
+        horizon: read('horizon').trim(),
+        rationale: read('rationale').trim(),
+        trim_triggers: stSplitLines(read('trim_triggers')),
+        do_not_trim_for: stSplitLines(read('do_not_trim_for')),
+      };
+    })
+    // A card with NOTHING in it is an empty row the user added and abandoned, and
+    // dropping it is not a silent drop — there is nothing in it to lose. A card
+    // with any field filled goes to the server, which refuses it by name rather
+    // than letting this function decide a half-written conviction is discardable.
+    .filter(t => t.theme || t.conviction || t.horizon || t.rationale
+                 || t.trim_triggers.length || t.do_not_trim_for.length);
+}
+
+function saveSecularThemes() {
+  const themes = collectSecularThemes();
+  // An empty list CLEARS, and clearing means none on record — it restores no
+  // house view, which is the bug this whole store was reopened over. Said out
+  // loud in the toast so a save that emptied the list cannot be mistaken for one
+  // that failed.
+  apiCall('/api/memory/secular_themes', 'POST',
+          { themes: themes.length ? themes : null },
+          themes.length
+            ? 'Convictions saved.'
+            : 'Cleared — no conviction on record, and nothing put in its place.');
+}
+
+// ============================================================
 // ACCOUNT JURISDICTIONS (Roadmap 4.7a)
 // ============================================================
 // Rows are drawn from GET /api/memory/account_jurisdictions, which lists the
@@ -1467,7 +1736,18 @@ const READINESS_TONE = {
   set: "text-primary",
   partial: "text-amber-400",
   empty: "text-error",
+  // Neutral, and pointedly not the red `empty` wears: this row's blank costs
+  // nothing, and a colour that read as a failure would be the page chasing an
+  // answer the user is entitled not to have.
+  not_stated: "text-on-surface-variant/60",
   unreadable: "text-on-surface-variant"
+};
+
+// The chip shows the status word. "not_stated" is the only one that does not
+// read as English, and the phrase has to carry both halves — none on file, and
+// that being a complete answer.
+const READINESS_LABEL = {
+  not_stated: "none stated · optional"
 };
 
 function readinessValueText(value) {
@@ -1537,7 +1817,8 @@ function readinessRow(item) {
   // The status word stays beside the marks rather than being replaced by them:
   // `unreadable` has no field strip to express it, and the playbook card's own
   // chip mirrors this word.
-  right.appendChild(make("p", "text-[10px] font-black uppercase tracking-widest " + tone, item.status));
+  right.appendChild(make("p", "text-[10px] font-black uppercase tracking-widest " + tone,
+                         READINESS_LABEL[item.status] || item.status));
   head.appendChild(right);
   row.appendChild(head);
 
@@ -1620,7 +1901,12 @@ async function loadReadiness() {
       // fields name the same alert — reporting it as a capability count
       // overstated what is actually dark.
       const live = (caps.live || []).length;
-      let line = counts.set + " of " + counts.total + " stated  |  "
+      // Counted over the REQUIRED rows only. An optional input in this fraction
+      // would report a complete profile as incomplete forever, because the only
+      // way to close it is to state a conviction the user may not hold.
+      const stated = counts.required_set ?? counts.set;
+      const statable = counts.required_total ?? counts.total;
+      let line = stated + " of " + statable + " stated  |  "
         + live + " of " + (caps.total || 0)
         + (caps.total === 1 ? " capability live" : " capabilities live");
       if (caps.unverified_stores) {
@@ -1637,7 +1923,7 @@ async function loadReadiness() {
       const chip = document.getElementById(elementId);
       const row = (data.inputs || []).find(i => i.key === rowKey);
       if (!chip || !row) return;
-      chip.textContent = row.status;
+      chip.textContent = READINESS_LABEL[row.status] || row.status;
       chip.className = "text-[10px] font-black uppercase tracking-widest "
         + (READINESS_TONE[row.status] || "text-on-surface-variant");
       chip.title = row.cost || "";
@@ -1645,6 +1931,7 @@ async function loadReadiness() {
     stampCard('pb-status', 'drawdown_playbook');
     stampCard('rc-status', 'risk_constraints');
     stampCard('ta-status', 'target_allocation');
+    stampCard('st-status', 'secular_themes');
     stampCard('aj-status', 'account_jurisdictions');
     // The limits editor borrows this payload's per-field prose for its live
     // preview rather than carrying a second copy of the same sentences.
@@ -1852,6 +2139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (currencySelect) currencySelect.addEventListener('change', syncIncomeLabel);
     loadReadiness();
     loadRiskReadiness();
+    loadSecularThemes();
     loadAccountJurisdictions();
     Object.keys(RISK_LIMIT_FIELDS).forEach(id => {
         const el = document.getElementById(id);

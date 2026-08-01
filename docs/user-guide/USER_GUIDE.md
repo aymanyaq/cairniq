@@ -450,6 +450,23 @@ On the Profile Readiness panel below, a confirmed-unlimited axis shows its own m
 
 ---
 
+### Structural Convictions (Secular Themes)
+
+The long-term positions you want held through noise. They live in `secular_themes` in your profile's `user_memory.json`, and — like your risk limits — that is the **only** place they come from.
+
+**Where you set them**: **Context › Structural Convictions**, between Target Allocation and Account Jurisdictions. One card per conviction, added and removed by you.
+
+*   **What you state**: the conviction itself, how strongly you hold it (high / medium / low), optionally a horizon and why, and two lists of rules in your own words — **Trim only if** and **Never trim for**.
+*   **What it does**: raises the bar for trimming; it does not remove it. Stage 1 of Today's Priority reads these, and a trim recommendation touching a tagged position must cite one of *your* trim rules. Overbought readings, mean-reversion arguments and rotation calls alone will not clear it.
+*   **At least one trim rule is required.** A conviction with none is an instruction to hold the position through anything — the strongest standing order in the app, and not something anyone should arrive at by leaving a box empty. If you mean it, say so in a rule of your own.
+*   **Nothing is filled in for you.** A new card opens blank, the strength selector opens on nothing, and no conviction is ever inferred from what you happen to hold. Clearing the list means *no conviction on record* and restores nothing.
+*   **What "none" means**: it is read as a question nobody has asked you — **not** as evidence that you hold nothing for the long term, and never as a reason to sell.
+*   **Why it works this way**: this field shipped with a fully-formed house thesis as its default. Because a missing key is filled in on first read, profiles that had never had the field acquired that conviction without anyone stating it, and it was then quoted back as the user's own view and used to shield whatever it tagged from a trim. The default was removed rather than documented.
+*   **This one is optional.** Unlike a target allocation, having no conviction switches nothing off — Today's Priority still runs and still recommends, it just weighs every holding as a tactical position. Profile Readiness lists the row so you can find it, marks it *optional*, and leaves it out of the "stated" count.
+*   **API**: `GET` / `POST /api/memory/secular_themes`.
+
+---
+
 ## 11. Live News Feed & Market Pulse
 
 To keep the UI responsive, expensive market calculations and news summaries are run by background workers and cached daily.

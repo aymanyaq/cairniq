@@ -55,29 +55,19 @@ DEFAULT_MEMORY = {
     "conversation_summaries": [],
     "past_recommendations": [],
     "active_theses": [],
-    "secular_themes": [
-        {
-            "theme": "AI / Semiconductors / Compute Infrastructure",
-            "conviction": "high",
-            "horizon": "5-10 years",
-            "rationale": (
-                "Multi-year capex super-cycle driven by foundation-model training, inference at scale, "
-                "and AI-native enterprise software. Treat as a structural position, not a tactical trade."
-            ),
-            "trim_triggers": [
-                "Weekly trend break (close below 40-week MA) on the position itself",
-                "MAG7 / hyperscaler capex guide-down across two consecutive quarters",
-                "Market regime shifts to Defensive Preservation (VIX > 28 or sustained sub-200-day)",
-                "Position single-name concentration exceeds the user's stated single-name cap"
-            ],
-            "do_not_trim_for": [
-                "Generic mean-reversion / RSI > 70 alone",
-                "Rotation calls into lagging sectors without confirmed money-flow into those sectors",
-                "Devil's-advocate framing without new contradicting evidence",
-                "Short-term overbought signals during a confirmed bullish regime"
-            ]
-        }
-    ]
+    # Structural convictions the user has stated IN THEIR OWN WORDS. Empty is
+    # the only correct default, and this list shipped with a fully-formed house
+    # thesis in it: because load_memory() back-fills every missing top-level key,
+    # a profile that had never had the field acquired that conviction the first
+    # time it was read and saved, and the advisor then quoted it back as the
+    # user's own view and shielded whatever it tagged from a trim.
+    #
+    # A theme SUPPRESSES trim recommendations every other engine would make, so
+    # it is the highest-authority thing in this file and may only ever come from
+    # the user: written through set_secular_themes, read through
+    # get_secular_themes. Empty is an UNANSWERED question — never a statement
+    # that the user holds no long-term conviction, and never permission to trim.
+    "secular_themes": []
 }
 
 SUPPORTED_BASE_CURRENCIES = {"USD", "CAD", "EUR", "GBP", "AUD", "JPY"}
@@ -1169,6 +1159,195 @@ def set_target_allocation(weights: dict[str, Any] | None,
     memory[TARGET_ALLOCATION_KEY] = record
     save_memory(memory)
     return {"ok": True, "target_allocation": record}
+
+
+# ---------------------------------------------------------------------------
+# Secular themes — the structural convictions a position is held through noise on
+# ---------------------------------------------------------------------------
+# The highest-authority store in this file and, until now, the only one with no
+# way to fill it: a tagged theme SUPPRESSES trim recommendations that every other
+# engine would otherwise make, and nothing anywhere could write one. So the field
+# sat at its shipped DEFAULT — a fully-formed house thesis — which back-filled
+# into live profiles and was read back to them as their own conviction. Removing
+# that default fixed the fabrication and left the store permanently empty, which
+# is the same shape target_allocation was in before it got this treatment.
+#
+# The invariant these functions exist to hold: a theme only ever comes from the
+# user. Nothing here infers one from what they hold, promotes a large position to
+# one, or accepts a model-drafted theme the user has not confirmed in their own
+# words. Clearing means NO THEME and can never restore a house view.
+
+SECULAR_THEMES_KEY = "secular_themes"
+
+# The three levels the injected context and the daily-priority prompt already
+# speak. Stated, never supplied: an unstated conviction is not "medium".
+SECULAR_CONVICTION_LEVELS = ("high", "medium", "low")
+
+
+def _clean_theme_rules(value: Any) -> list[str]:
+    """Free-text rules — one per line or one per list entry, as written.
+
+    Not parsed, not interpreted, not matched against anything: these sentences
+    are read by the advisor as the user's own words, and a store that tidied
+    them into a vocabulary of its own would be editing the instruction.
+    """
+    if isinstance(value, str):
+        value = value.splitlines()
+    if not isinstance(value, (list, tuple)):
+        return []
+    rules: list[str] = []
+    for item in value:
+        text = str(item if item is not None else "").strip()
+        if text and text not in rules:
+            rules.append(text)
+    return rules
+
+
+@log_exceptions()
+def get_secular_themes() -> list[dict[str, Any]]:
+    """The user's stated structural convictions. `[]` means they have stated none.
+
+    `[]` is an UNANSWERED question rather than an answer. It does not mean the
+    user holds no long-term conviction, and nothing downstream may read it as
+    permission to trim — the same distinction risk_constraints draws with its
+    acknowledgement, except that here EVERY blank is of the never-asked kind
+    until someone uses the entry screen.
+
+    A row that cannot be read as a theme is dropped rather than repaired. A
+    half-parsed row rendered as an unnamed theme would shield whichever position
+    the reader decided it referred to, which is worse than not rendering it.
+    """
+    stored = load_memory().get(SECULAR_THEMES_KEY)
+    if not isinstance(stored, list):
+        return []
+    return [
+        theme for theme in stored
+        if isinstance(theme, dict) and str(theme.get("theme") or "").strip()
+    ]
+
+
+@log_exceptions()
+def set_secular_themes(themes: list[dict[str, Any]] | None) -> dict[str, Any]:
+    """Store the user's secular themes. `None` or `[]` CLEARS them.
+
+    Whole-list replace rather than merge, because the editor shows the whole list
+    and a merge would make a deleted theme un-deletable. Clearing writes an empty
+    list and means exactly "no theme on record" — it is not a reset, and there is
+    no view for it to fall back to.
+
+    Each theme is validated and nothing is written unless every row passes, so a
+    typo in the fourth theme cannot half-apply the first three. The three rules
+    that REFUSE rather than default, and why each one is a refusal:
+
+    * `theme` — the name. A theme with no name renders as an unnamed one, and an
+      unnamed theme protects whatever the reader decides it meant.
+    * `conviction` — one of high / medium / low. Never supplied: conviction is
+      the dial that decides how hard the theme argues against a trim, and a level
+      this function picked would be quoted back as the user's own strength of
+      belief.
+    * `trim_triggers` — at least one. A theme with no trim rule is an instruction
+      to hold the position through ANYTHING, which is the strongest standing
+      order in the app and far too strong to arrive at by leaving a box empty. A
+      user who means it can say so in a trigger of their own words; what this
+      refuses is reaching it by silence.
+
+    `horizon`, `rationale` and `do_not_trim_for` are optional and stored as
+    written — none of them changes what is enforced, so an empty one is a blank
+    the user is entitled to leave.
+
+    Returns ``{"ok": bool, ...}``; never raises, never partially writes.
+    """
+    memory = load_memory()
+
+    if not themes:
+        memory[SECULAR_THEMES_KEY] = []
+        save_memory(memory)
+        return {"ok": True, "cleared": True, "secular_themes": []}
+
+    if not isinstance(themes, (list, tuple)):
+        return {"ok": False,
+                "error": "themes must be a list",
+                "rejected": ["themes must be a list"]}
+
+    # Prior rows by name, so `set_at` survives a save that did not change the
+    # theme. Re-stamping every row on every save would turn "stated on" into
+    # "last time you opened the editor", which is a different fact.
+    previous: dict[str, dict[str, Any]] = {}
+    for row in memory.get(SECULAR_THEMES_KEY) or []:
+        if isinstance(row, dict):
+            name = str(row.get("theme") or "").strip().casefold()
+            if name:
+                previous[name] = row
+
+    cleaned: list[dict[str, Any]] = []
+    rejected: list[str] = []
+    seen: set[str] = set()
+    now = datetime.now().isoformat(timespec="seconds")
+
+    for index, raw in enumerate(themes):
+        position = f"entry {index + 1}"
+        if not isinstance(raw, dict):
+            rejected.append(f"{position}: not a theme")
+            continue
+
+        name = str(raw.get("theme") or "").strip()
+        if not name:
+            rejected.append(f"{position}: give the theme a name")
+            continue
+
+        key = name.casefold()
+        if key in seen:
+            # Refused rather than merged: two rows under one name have two sets
+            # of trim rules, and silently keeping one of them would drop a rule
+            # the user wrote while the save reported success.
+            rejected.append(f"{name}: named twice — each theme gets one entry")
+            continue
+
+        conviction = str(raw.get("conviction") or "").strip().lower()
+        if conviction not in SECULAR_CONVICTION_LEVELS:
+            rejected.append(
+                f"{name}: conviction must be one of "
+                f"{', '.join(SECULAR_CONVICTION_LEVELS)}, and is never filled in for you"
+            )
+            continue
+
+        triggers = _clean_theme_rules(raw.get("trim_triggers"))
+        if not triggers:
+            rejected.append(
+                f"{name}: name at least one condition that would make you trim this. "
+                "A theme with no trim rule holds the position through anything, which "
+                "is too strong an instruction to reach by leaving a box empty"
+            )
+            continue
+
+        theme: dict[str, Any] = {
+            "theme": name,
+            "conviction": conviction,
+            "horizon": str(raw.get("horizon") or "").strip(),
+            "rationale": str(raw.get("rationale") or "").strip(),
+            "trim_triggers": triggers,
+            "do_not_trim_for": _clean_theme_rules(raw.get("do_not_trim_for")),
+        }
+        prior = previous.get(key)
+        unchanged = bool(prior) and {
+            k: v for k, v in prior.items() if k != "set_at"
+        } == theme
+        theme["set_at"] = (prior or {}).get("set_at") if unchanged else now
+        if not theme["set_at"]:
+            theme["set_at"] = now
+
+        cleaned.append(theme)
+        seen.add(key)
+
+    # All-or-nothing. A rejected row is REPORTED and the store is left exactly as
+    # it was: a partial write here would leave the user believing a theme is
+    # protecting a position when the row naming it was the one that failed.
+    if rejected:
+        return {"ok": False, "error": "; ".join(rejected), "rejected": rejected}
+
+    memory[SECULAR_THEMES_KEY] = cleaned
+    save_memory(memory)
+    return {"ok": True, "secular_themes": cleaned}
 
 
 # --- 4.7a — tax jurisdiction, stated per ACCOUNT ----------------------------

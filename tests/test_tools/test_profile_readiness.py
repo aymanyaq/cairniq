@@ -152,7 +152,11 @@ def test_a_gap_carries_one_summary_line_and_the_detail_behind_it():
     readiness = pr.build_profile_readiness()
 
     for row in readiness["inputs"]:
-        if row["status"] == pr.STATUS_SET:
+        # STATUS_NOT_STATED joins SET here rather than the gap branch below, and
+        # the reason is the whole point of the fourth word: an OPTIONAL input
+        # nobody has stated has no cost to summarize. Charging one would make the
+        # collapsed line say a feature is off when none is.
+        if row["status"] in (pr.STATUS_SET, pr.STATUS_NOT_STATED):
             assert row["cost"] == "", f"{row['key']} charged a cost with nothing missing"
             assert row["inert"] == []
         else:
@@ -256,24 +260,127 @@ def test_every_blank_names_a_consequence_and_where_it_is_stated():
     readiness = pr.build_profile_readiness()
 
     for row in readiness["inputs"]:
-        if row["status"] == pr.STATUS_SET:
+        # Where it is stated is required of EVERY blank, optional or not: a row
+        # the user cannot act on is the same dead end whether or not it costs
+        # them anything. Only the consequence is exempt, and only because an
+        # optional blank genuinely has none.
+        if row["status"] != pr.STATUS_SET:
+            assert row["entry"], f"{row['key']} reported a blank with nowhere to state it"
+        if row["status"] in (pr.STATUS_SET, pr.STATUS_NOT_STATED):
             continue
         assert row["inert"], f"{row['key']} reported a gap with no consequence"
-        assert row["entry"], f"{row['key']} reported a gap with nowhere to state it"
 
 
-def test_a_bare_profile_reports_every_input_as_empty():
+def test_a_bare_profile_reports_every_required_input_as_empty():
     readiness = pr.build_profile_readiness()
     rows = _by_key(readiness)
 
     assert set(rows) == {
         "drawdown_playbook", "risk_constraints", "target_allocation",
-        "account_jurisdictions", "wealth_goal", "feedback_ratings",
+        "account_jurisdictions", "wealth_goal", "secular_themes",
+        "feedback_ratings",
     }
-    assert all(row["status"] == pr.STATUS_EMPTY for row in rows.values())
+    required = {k: v for k, v in rows.items() if k not in pr.OPTIONAL_KEYS}
+    assert all(row["status"] == pr.STATUS_EMPTY for row in required.values())
     assert readiness["counts"]["empty"] == 6
     assert readiness["counts"]["set"] == 0
     assert readiness["inert_count"] >= 4
+
+
+# ---------------------------------------------------------------------------
+# The fourth state: OPTIONAL, and blank
+#
+# Every row above reports a blank that switches a shipped feature off, so
+# "empty" carries a cost by construction. Structural convictions do not: with
+# none on file the daily priority still runs and still recommends, it just
+# weighs every holding as tactical. That is a different default, not a dark
+# feature — and the store it reports on is the one where an invented value did
+# the most damage, so the row has to hold both halves at once.
+# ---------------------------------------------------------------------------
+
+def test_an_unstated_optional_input_is_complete_not_empty():
+    """The nag test. A profile with no conviction is finished, and a row that
+    reported it as `empty` would paint it red and chase an answer the user is
+    entitled not to have."""
+    row = _by_key(pr.build_profile_readiness())["secular_themes"]
+
+    assert row["status"] == pr.STATUS_NOT_STATED
+    assert row["status"] != pr.STATUS_EMPTY
+    assert row["missing"] == []
+    assert row["required"] == []
+
+
+def test_an_unstated_optional_input_charges_nothing_and_darkens_nothing():
+    """It must not reach the switchboard in either direction: a capability
+    listed here would render lit or dark, and neither is true of a feature that
+    behaves the same way with the store empty."""
+    readiness = pr.build_profile_readiness()
+    row = _by_key(readiness)["secular_themes"]
+
+    assert row["cost"] == ""
+    assert row["inert"] == []
+    assert row["capabilities"] == []
+    assert row["capabilities_dark"] == []
+    caps = readiness["capabilities"]
+    assert "the daily priority" not in caps["dark"] + caps["live"]
+
+
+def test_the_stated_fraction_excludes_the_optional_row():
+    """The figure the page puts at the top. Counting an optional input in the
+    denominator would report a complete profile as incomplete forever, because
+    the only way to close it is to state a conviction the user may not hold."""
+    counts = pr.build_profile_readiness()["counts"]
+
+    assert counts["total"] == 7
+    assert counts["required_total"] == 6
+    assert counts["required_set"] == 0
+    assert counts["not_stated"] == 1
+
+
+def test_a_stated_conviction_reads_as_set_and_echoes_the_users_own_words():
+    mem.set_secular_themes([{
+        "theme": "Grid / Electrification",
+        "conviction": "high",
+        "trim_triggers": ["Close below the 40-week moving average"],
+    }])
+
+    readiness = pr.build_profile_readiness()
+    row = _by_key(readiness)["secular_themes"]
+
+    assert row["status"] == pr.STATUS_SET
+    assert row["observed"]["themes"] == ["Grid / Electrification"]
+    assert row["optional_present"] == ["themes"]
+    # Still outside the fraction. Stating one is the user raising their own bar,
+    # not repairing something that was broken.
+    assert readiness["counts"]["required_total"] == 6
+    assert readiness["counts"]["required_set"] == 0
+
+
+def test_the_optional_row_never_proposes_a_conviction():
+    """The failure this store actually shipped, in the one place built to report
+    on it. A page that named a theme while reporting that none is on file would
+    be reintroducing the default through the instrument that caught it."""
+    row = _by_key(pr.build_profile_readiness())["secular_themes"]
+
+    prose = " ".join(_prose(row)).lower()
+
+    for word in ("ai", "semiconductor", "compute", "energy", "grid"):
+        assert not re.search(rf"\b{word}\b", prose), (
+            f"the readiness row named a theme: {word!r}"
+        )
+
+
+def test_the_optional_blank_is_not_reported_as_an_absence_of_conviction():
+    """The inverse fabrication, and the one that ends in a sell: an unanswered
+    question read as "this user holds nothing for the long term" is evidence for
+    trimming that nobody supplied."""
+    row = _by_key(pr.build_profile_readiness())["secular_themes"]
+
+    consequence = row["consequence_by_field"]["themes"]
+
+    assert "complete answer" in consequence
+    assert "nothing is switched off" in consequence.lower()
+    assert row["stated"] == {}
 
 
 # ---------------------------------------------------------------------------

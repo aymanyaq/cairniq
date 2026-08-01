@@ -40,11 +40,16 @@ def test_the_endpoint_answers_with_every_input_and_the_contract(client):
         "target_allocation",
         "account_jurisdictions",
         "wealth_goal",
+        "secular_themes",
         "feedback_ratings",
     }
     # The contract travels WITH the payload rather than living only in the
     # template, so any second consumer inherits it instead of re-stating it.
     assert payload["contract"]
+    # The fraction the page puts at the top counts only the rows that CAN be
+    # incomplete. Structural convictions are optional, so a profile with none is
+    # finished rather than one short forever.
+    assert payload["counts"]["required_total"] == payload["counts"]["total"] - 1
 
 
 def test_a_blank_store_reports_the_feature_it_switches_off(client):
