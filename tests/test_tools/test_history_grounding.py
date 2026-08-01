@@ -75,8 +75,16 @@ def test_empty_theses_forbid_a_fabricated_watching_tag(context):
 
 
 def test_empty_blocks_are_marked_authoritative_not_missing(context):
-    """A model told only 'empty' may treat the block as a data gap worth filling."""
-    assert context.count("complete and authoritative") == 2
+    """A model told only 'empty' may treat the block as a data gap worth filling.
+
+    Three blocks now, not two: structural convictions joined the family once the
+    house thesis stopped being back-filled into every profile. Until then that
+    block was never empty in practice, so its silence cost nothing and nobody
+    noticed the gate. **This count is the point of the test** — a new empty block
+    that does not assert itself should fail here rather than ship mute, so raise
+    the number only alongside the phrase.
+    """
+    assert context.count("complete and authoritative") == 3
 
 
 # --- populated ledger ------------------------------------------------------------

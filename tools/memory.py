@@ -569,9 +569,28 @@ def get_user_context() -> str:
     # Secular conviction themes — structural positions the user wants treated
     # differently than tactical/cyclical exposure. Trim recommendations on these
     # require a higher bar than generic rebalance math.
-    secular_themes = memory.get("secular_themes", [])
+    #
+    # BOTH branches render, and that is the load-bearing part. This block used to
+    # be gated on truthiness and emitted NOTHING when the list was empty — which
+    # was survivable only for as long as the list was never empty, because
+    # DEFAULT_MEMORY back-filled a house thesis into every profile. With that
+    # default correctly removed, silence became the normal case, and silence is
+    # the one thing that reliably gets filled in: an absent conviction reads
+    # either as one the model supplies (invented protection for whatever it
+    # picks) or as the user having none (invented permission to trim). Both are
+    # fabrications about the user, in opposite directions, and the only way to
+    # stop them is to write the negative down.
+    #
+    # Rows are filtered on the same predicate get_secular_themes() uses — a dict
+    # with a name. There is deliberately no "Unnamed theme" fallback: a row that
+    # cannot be read is not rendered at all, because an unnamed theme shields
+    # whichever position the reader decides it referred to.
+    secular_themes = [
+        theme for theme in (memory.get("secular_themes") or [])
+        if isinstance(theme, dict) and str(theme.get("theme") or "").strip()
+    ]
+    context_parts.append("  -- STRUCTURAL CONVICTION (SECULAR THEMES) --")
     if secular_themes:
-        context_parts.append("  -- STRUCTURAL CONVICTION (SECULAR THEMES) --")
         context_parts.append(
             "  These are multi-year secular positions, not tactical trades. "
             "Apply the per-theme trim_triggers / do_not_trim_for rules strictly: "
@@ -580,8 +599,8 @@ def get_user_context() -> str:
             "rotation-into-laggards arguments alone are insufficient."
         )
         for theme in secular_themes:
-            name = theme.get("theme") or "Unnamed theme"
-            conviction = theme.get("conviction", "medium")
+            name = theme.get("theme")
+            conviction = theme.get("conviction") or "unstated"
             horizon = theme.get("horizon", "")
             rationale = theme.get("rationale", "")
             context_parts.append(f"  🎯 {name}  [conviction={conviction}, horizon={horizon}]")
@@ -597,7 +616,27 @@ def get_user_context() -> str:
                 context_parts.append("     • DO NOT trim for:")
                 for b in blockers:
                     context_parts.append(f"        - {b}")
-        context_parts.append("")  # spacer
+    else:
+        context_parts.append(
+            "  NONE ON RECORD — the user has stated no secular theme. This block is "
+            "complete and authoritative: there is nowhere else these are kept, so "
+            "nothing has been omitted from it."
+        )
+        context_parts.append(
+            "  This is an UNANSWERED question, not an answer. It does not mean the user "
+            "holds nothing for the long term — only that nobody has asked them. The "
+            "blank is therefore NOT evidence for trimming anything and never becomes a "
+            "reason to sell: weigh every position on its own merits, exactly as you "
+            "would if this section were not here."
+        )
+        context_parts.append(
+            "  You have no theme here, so do NOT name, infer, or reconstruct one — not "
+            "from what the user holds, not from sector weights, not from anything said "
+            "earlier in this conversation. Do not describe any holding as the user's "
+            "secular / structural / long-term-conviction position. And since there is "
+            "no trim_trigger on file, there is no trim_trigger to claim was met."
+        )
+    context_parts.append("")  # spacer
 
     # User profile
     if profile.get("name"):

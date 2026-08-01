@@ -23,7 +23,7 @@ from typing import Any
 import pytest
 
 import tools.memory as mem
-from tools.memory import get_secular_themes, set_secular_themes
+from tools.memory import get_secular_themes, get_user_context, set_secular_themes
 
 THEME = {
     "theme": "Grid / Electrification",
@@ -53,6 +53,15 @@ def _memory(themes: Any) -> dict[str, Any]:
     }
 
 
+@pytest.fixture
+def context(monkeypatch):
+    """Render the injected memory context over a profile with the given themes."""
+    def _render(themes: Any = None) -> str:
+        monkeypatch.setattr(mem, "load_memory", lambda: _memory(themes or []))
+        return get_user_context()
+    return _render
+
+
 # --- the default ----------------------------------------------------------------
 
 
@@ -77,6 +86,82 @@ def test_a_stated_theme_survives_the_back_fill(profile):
     profile.write_text(json.dumps({"secular_themes": [THEME]}))
 
     assert mem.load_memory()["secular_themes"] == [THEME]
+
+
+# --- the empty block ------------------------------------------------------------
+#
+# The block was gated on truthiness and emitted NOTHING when the list was empty.
+# That was survivable only while the list was never empty — the shipped default
+# saw to that — so removing the default turned silence into the normal case, and
+# silence is what gets filled in. The negative has to be on the page, and it has
+# to close BOTH doors at once: an absent conviction may not read as one the model
+# supplies, nor as the user having none.
+
+
+def test_empty_block_is_stated_not_omitted(context):
+    """Silence is what gets back-filled — the negative has to be on the page."""
+    rendered = context()
+
+    assert "STRUCTURAL CONVICTION (SECULAR THEMES)" in rendered
+    assert "NONE ON RECORD — the user has stated no secular theme" in rendered
+    assert "complete and authoritative" in rendered
+
+
+def test_empty_block_forbids_promoting_a_holding_to_a_theme(context):
+    """The fabrication this prevents: "your secular AI position" over a growth name."""
+    rendered = context()
+
+    assert "do NOT name, infer, or reconstruct one" in rendered
+    assert "secular / structural / long-term-conviction position" in rendered
+    assert "no trim_trigger" in rendered and "to claim was met" in rendered
+
+
+def test_empty_block_is_not_read_as_permission_to_trim(context):
+    """The inverse fabrication: reading an unanswered question as "no conviction"."""
+    rendered = context()
+
+    assert "UNANSWERED question, not an answer" in rendered
+    assert "NOT evidence for trimming" in rendered
+    assert "never becomes a reason to sell" in rendered
+
+
+# --- a stated theme -------------------------------------------------------------
+
+
+def test_stated_theme_renders_with_its_own_rules(context):
+    rendered = context([THEME])
+
+    assert "Grid / Electrification" in rendered
+    assert "conviction=high" in rendered
+    assert "Close below the 40-week MA" in rendered
+    assert "RSI > 70 alone" in rendered
+
+
+def test_stated_theme_suppresses_the_negative(context):
+    """Both branches must never render — that would assert and deny in one context."""
+    rendered = context([THEME])
+
+    assert "NONE ON RECORD — the user has stated no secular theme" not in rendered
+
+
+def test_unreadable_rows_do_not_render_a_phantom_theme(context):
+    """A junk row must not become an "Unnamed theme" that shields a position."""
+    rendered = context(["AI / Semiconductors", None, {}, {"theme": "   "}])
+
+    assert "Unnamed theme" not in rendered
+    assert "AI / Semiconductors" not in rendered
+    assert "NONE ON RECORD — the user has stated no secular theme" in rendered
+
+
+def test_a_conviction_level_is_never_invented_for_a_hand_edited_row(context):
+    """The renderer used to default a missing level to "medium", which states the
+    user's strength of belief for them. The writer refuses such a row, but a
+    hand-edited file can still carry one."""
+    rendered = context([{"theme": "Grid / Electrification",
+                         "trim_triggers": ["Close below the 40-week MA"]}])
+
+    assert "conviction=unstated" in rendered
+    assert "conviction=medium" not in rendered
 
 
 # --- the reader -----------------------------------------------------------------
