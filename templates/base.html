@@ -361,6 +361,13 @@
             </button>
             {% endif %}
         </div>
+        <!-- Lives in base.html, not per-page: every screen that renders model
+             output inherits it, so a new AI surface can't ship without one.
+             Static by construction — never emitted by the model, which can
+             omit or reword it on the turns it forgets. -->
+        <p class="mt-3 px-1 text-[9px] leading-snug text-error/60 uppercase tracking-wider font-bold">
+            AI can make mistakes — verify figures before acting. Not financial advice.
+        </p>
     </div>
   </aside>
 

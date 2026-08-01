@@ -266,6 +266,7 @@
                             <span class="material-symbols-outlined absolute right-3 top-2 pointer-events-none text-on-surface-variant" data-icon="unfold_more">unfold_more</span>
                         </div>
                         <p id="provider-hint" class="text-[10px] text-on-surface-variant/60 italic mt-1"></p>
+                        <p id="provider-retention" class="text-[10px] text-on-surface-variant/70 mt-1.5 leading-relaxed"></p>
                     </div>
 
                     <div class="space-y-2">
@@ -702,18 +703,23 @@ const PROVIDER_DEFAULTS = {
         fast:    "us.anthropic.claude-sonnet-4-6",
         embed:   "amazon.titan-embed-text-v2:0",
         hint:    "Bedrock inference profile or full ARN (e.g. us.anthropic.claude-...)",
+        // Retention differs per vendor and changes over time. These are short
+        // pointers, not a legal summary — the linked terms are authoritative.
+        retention: "Zero data retention and zero operator access by default; some third-party models on Bedrock retain flagged traffic up to 30 days.",
     },
     anthropic: {
         primary: "claude-sonnet-4-5-20250929",
         fast:    "claude-haiku-4-5-20250929",
         embed:   null,  // no native embeddings API
         hint:    "Bare Anthropic model id (no us./global./arn:aws prefix).",
+        retention: "API prompts are not used for training by default; retention is limited but not zero.",
     },
     openai: {
         primary: "gpt-4o",
         fast:    "gpt-4o-mini",
         embed:   "text-embedding-3-small",
         hint:    "OpenAI model id, e.g. gpt-4o or gpt-4o-mini.",
+        retention: "Abuse-monitoring logs retained up to 30 days unless your org is approved for Zero Data Retention.",
     },
     azure: {
         // Azure has no real defaults — the "model id" is YOUR deployment name,
@@ -722,18 +728,21 @@ const PROVIDER_DEFAULTS = {
         fast:    "",
         embed:   "",
         hint:    "Azure OpenAI deployment names (set when you deploy a model in the Azure portal). Endpoint + API key below.",
+        retention: "Prompts and completions are stored for possible human review unless you are approved for modified abuse monitoring.",
     },
     google: {
         primary: "gemini-2.5-pro",
         fast:    "gemini-2.5-flash",
         embed:   "models/text-embedding-004",
         hint:    "Gemini model id, e.g. gemini-2.5-pro or gemini-2.5-flash.",
+        retention: "Prompts flagged by safety classifiers may be logged up to 90 days; opt-out available on request.",
     },
     vertexai: {
         primary: "gemini-2.5-pro",
         fast:    "gemini-2.5-flash",
         embed:   "text-embedding-005",
         hint:    "Gemini model id, e.g. gemini-2.5-pro or gemini-2.5-flash.",
+        retention: "Prompts flagged by safety classifiers may be logged up to 90 days; opt-out available on request.",
     },
 };
 
@@ -833,6 +842,7 @@ function _applyProviderUI() {
     const fast      = document.getElementById("AIDLC_SONNET_MODEL_ID");
     const embed     = document.getElementById("AIDLC_EMBED_MODEL_ID");
     const hint      = document.getElementById("provider-hint");
+    const retention = document.getElementById("provider-retention");
     const embedHint = document.getElementById("embed-model-hint");
     const embedRow  = document.getElementById("embed-model-row");
     const embedNote = document.getElementById("embed-anthropic-note");
@@ -842,6 +852,16 @@ function _applyProviderUI() {
     if (primary) primary.placeholder = defaults.primary ? "e.g. " + defaults.primary : "your deployment name";
     if (fast)    fast.placeholder    = defaults.fast    ? "e.g. " + defaults.fast    : "your deployment name";
     if (hint)    hint.textContent    = defaults.hint;
+
+    // Prompts leave the machine on every call, so the retention terms belong at
+    // the moment the provider is picked — not buried in the docs. Wording is
+    // deliberately a pointer: these policies change, so the provider's own
+    // terms are the authority, never this string.
+    if (retention) {
+        retention.textContent = defaults.retention
+            ? "Data handling: " + defaults.retention + " Confirm against your provider's current terms and your own account agreement."
+            : "";
+    }
 
     // Embedding model — Anthropic has no native embeddings API.
     if (embedRow)  embedRow.style.display  = (provider === "anthropic") ? "none" : "";
