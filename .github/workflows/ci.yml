@@ -96,7 +96,11 @@ jobs:
         run: |
           set -euo pipefail
           tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${tarball}" -o "$tarball"
+          # Retry the fetch: a TLS hiccup pulling this tarball fails the job with
+          # curl's exit code, which reads like a secret was found when nothing was
+          # scanned yet. The checksum below is what makes a retry safe to trust.
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 3 --connect-timeout 15 \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${tarball}" -o "$tarball"
           echo "${GITLEAKS_SHA256}  ${tarball}" | sha256sum -c -
           tar -xzf "$tarball" gitleaks
           ./gitleaks detect --source . --config .gitleaks.toml --redact --no-banner
