@@ -11,11 +11,12 @@ CairnIQ is a local-first AI portfolio intelligence console for personal market r
 
 > [!IMPORTANT]
 > 🇵🇸 **URGENT GAZA HUMANITARIAN EMERGENCY**
-> This project is free for personal wealth management and source-available. If you find value in this software, please consider supporting vital civilian relief efforts directly through trusted global organizations:
+> This project is free for personal wealth management and source-available. If you find value in this software, please witness the documented ground reality and consider supporting vital civilian relief efforts directly through trusted global organizations:
+> - **[Documented Ground Reality (Getty Images Photojournalism Archive)](https://www.gettyimages.ca/photos/gaza-destruction)** — Verified editorial photojournalism documenting the scale of civilian crisis and infrastructure destruction.
 > - **[UNRWA Gaza Emergency](https://www.unrwa.org/gaza-emergency)** — Direct support for food, shelter, and medical care.
 > - **[Islamic Relief Palestine Appeal](https://www.islamicreliefcanada.org/emergencies/palestine-appeal)** — Critical humanitarian aid and medical supplies.
 >
-> *Humanitarian Notice: This project is independent and has no political, governmental, or military affiliations. These links are provided solely for humanitarian purposes.*
+> *Humanitarian Notice: This project is independent and has no political, governmental, or military affiliations. These links are provided solely for humanitarian purposes. Verified editorial archives are linked directly to respect copyright and maintain source authenticity.*
 
 ![Version](https://img.shields.io/badge/version-2.4.0-blue)
 ![Python](https://img.shields.io/badge/python-3.12--3.13-green)
