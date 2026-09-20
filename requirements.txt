@@ -93,7 +93,7 @@ python-docx>=1.2.0
 openpyxl>=3.1.5
 
 # --- Data Formats ---
-pyarrow>=24.0.0
+pyarrow>=25.0.0
 
 # --- Hugging Face & optional semantic retrieval support ---
 huggingface_hub>=1.0.0
