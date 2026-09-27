@@ -4,6 +4,9 @@ CairnIQ is a local-first AI portfolio intelligence console for personal market r
 
 🌐 **Official Website:** [cairniq.com](https://www.cairniq.com)
 
+
+🌐 **COMING SOON:** CairnIQ Agent for Claude, VS Code & Cursor
+
 📱 **iOS Companion App:** A native SwiftUI client (Chat, Market, and News) lives in its own repository — [github.com/aymanyaq/cairniq-ios](https://github.com/aymanyaq/cairniq-ios). It connects to your self-hosted CairnIQ server over your local network / VPN.
 
 > [!CAUTION]
